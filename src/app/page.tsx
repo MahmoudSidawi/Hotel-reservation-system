@@ -1,23 +1,18 @@
-import Link from "next/link";
-import { listRoomTypes } from "@/backend/controllers/roomTypeController";
+import HeroSection from "./components/hero-section";
+import RoomsSection from "./components/rooms-section";
+import Amenities from "./components/amenities";
+import Testimonials from "./components/testimonials";
+import CTASection from "./components/cta-section";
+import Newsletter from "./components/newsletter";
 
-export default async function HomePage() {
-  const roomTypes = await listRoomTypes();
-
+export default function HomePage() {
   return (
-    <main className="container">
-      <h1>Room Types</h1>
-      {roomTypes.length === 0 && <p>No room types yet.</p>}
-      {roomTypes.map((roomType) => (
-        <div className="card" key={String(roomType._id)}>
-          <h2>{roomType.name}</h2>
-          <p>{roomType.description}</p>
-          <p>
-            ${roomType.basePrice} / night · Sleeps {roomType.capacity}
-          </p>
-          <Link href={`/rooms?roomTypeId=${String(roomType._id)}`}>View rooms</Link>
-        </div>
-      ))}
+    <main>
+      <HeroSection />
+      <RoomsSection />
+      <Amenities />
+      <Testimonials />
+      <CTASection />
+      <Newsletter />
     </main>
-  );
-}
+  );}

@@ -1,34 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/frontend/components/Navbar";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Navbar from "./components/navbar";
+import Footer from "./components/footer";
 
 export const metadata: Metadata = {
-  title: "Hotel Reservation System",
-  description: "Manage rooms, reservations, and payments",
+  title: "Velora | Luxury Hotel & Resort",
+  description: "An intimate coastal sanctuary offering timeless hospitality.",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+    <html lang="en" className="scroll-smooth">
+      <body className="bg-stone-50 font-sans text-neutral-900 antialiased selection:bg-amber-200">
         <Navbar />
         {children}
+        <Footer />
       </body>
     </html>
-  );
-}
+  );}

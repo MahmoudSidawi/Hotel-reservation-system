@@ -7,7 +7,7 @@ const ROOMS = [
     desc: "A high-end, bright, and airy luxury hotel suite with a king-sized bed.",
     price: "$850",
     badge: "SIGNATURE SUITE",
-    image: "https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=800",
+    image: "/room1.png",
   },
   {
     title: "Deluxe Ocean View",
@@ -15,7 +15,7 @@ const ROOMS = [
     desc: "Sophisticated hotel room featuring a balcony with clear ocean views and a peaceful setting.",
     price: "$650",
     badge: "OCEANFRONT",
-    image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=800",
+    image: "/room2.png",
   },
   {
     title: "Garden Terrace Room",
@@ -23,7 +23,7 @@ const ROOMS = [
     desc: "A cozy hotel room with direct access to a lush garden terrace, featuring premium amenities.",
     price: "$480",
     badge: "GARDEN VIEW",
-    image: "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=800",
+    image: "room3.png",
   },
 ];
 

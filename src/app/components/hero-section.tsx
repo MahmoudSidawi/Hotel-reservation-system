@@ -6,7 +6,7 @@ export default function HeroSection() {
       {/* Background Image with Subtle Dark Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-65 scale-105 transition-transform duration-1000" 
-        style={{ backgroundImage: `url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2000')` }}
+        style={{ backgroundImage: `url('/hero.png')` }}
       />
       
       {/* Soft Vignette Gradient Overlay */}

@@ -39,7 +39,7 @@ export default function Navbar() {
             href="/#book"
             className="border border-neutral-400 px-5 py-2.5 text-xs tracking-widest uppercase text-white hover:bg-white hover:text-black transition-all"
           >
-            Book Now
+            Home
           </Link>
         </div>
 

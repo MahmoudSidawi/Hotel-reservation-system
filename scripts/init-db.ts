@@ -2,9 +2,9 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 async function main() {
-  const { connectToDatabase } = await import("../src/lib/mongodb");
+  const { connectToDatabase } = await import("../src/backend/config/db");
   const { User, RoomType, RoomImage, Amenity, Room, Reservation, Payment } = await import(
-    "../src/models"
+    "../src/backend/models"
   );
 
   const mongoose = await connectToDatabase();

@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get callbackUrl if present (e.g., /rooms/deluxe-suite)
+  const callbackUrl = searchParams.get("callbackUrl");
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,12 +37,17 @@ export default function LoginPage() {
         throw new Error(data.error ?? "Sign in failed");
       }
 
-      const destination =
-        data.user.role === "admin"
-          ? "/admin"
-          : data.user.role === "receptionist"
-            ? "/receptionist"
-            : "/";
+      // Check role or callbackUrl
+      let destination = "/";
+      if (data.user.role === "admin") {
+        destination = "/admin";
+      } else if (data.user.role === "receptionist") {
+        destination = "/receptionist";
+      } else {
+        // Regular guest: redirect back to the selected room page if callbackUrl exists
+        destination = callbackUrl ?? "/";
+      }
+
       router.push(destination);
       router.refresh();
     } catch (err) {
@@ -177,5 +187,13 @@ export default function LoginPage() {
       {/* Footer Included Here */}
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-stone-100 flex items-center justify-center text-xs text-neutral-500">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

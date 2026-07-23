@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Users, BedDouble, Star, Calendar,
   Maximize2, Info, CheckCircle2, CreditCard, X, CheckCircle
@@ -115,7 +115,6 @@ function BookingModal({
                 </div>
               </div>
             </div>
-
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">FULL NAME</label>
@@ -148,12 +147,10 @@ function BookingModal({
                 />
               </div>
             </div>
-
             <div className="bg-[#F2ECE1] p-3.5 rounded border border-[#E2DDD5] flex justify-between items-center">
               <span className="font-semibold text-[#1A1918]">Total Payable Due at Check-In:</span>
               <span className="font-serif text-lg font-bold text-[#1A1918]">${bookingDetails.total}</span>
             </div>
-
             <button
               type="submit"
               className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md flex items-center justify-center gap-2"
@@ -169,13 +166,16 @@ function BookingModal({
 }
 
 // ============================================================================
-// ROOM DETAIL PAGE — /rooms/[id]
+// ROOM DETAIL PAGE
 // ============================================================================
 export default function RoomDetailPage() {
-  const params    = useParams();
-  const roomId    = params?.id as string;
-  const room      = VELORA_ROOMS.find((r) => r.id === roomId) ?? VELORA_ROOMS[0];
+  const params = useParams();
+  const router = useRouter();
+  const roomId = params?.id as string;
+  const room   = VELORA_ROOMS.find((r) => r.id === roomId) ?? VELORA_ROOMS[0];
 
+  // Set to false to simulate unauthenticated user state
+  const [isLoggedIn]                          = useState(false);
   const [checkInDate, setCheckInDate]         = useState('2026-10-24');
   const [checkOutDate, setCheckOutDate]       = useState('2026-10-27');
   const [guestsCount, setGuestsCount]         = useState(2);
@@ -192,12 +192,21 @@ export default function RoomDetailPage() {
     } catch { return 3; }
   };
 
-  const nightsCount   = calculateNights();
-  const roomSubtotal  = room.pricePerNight * nightsCount;
-  const serviceFee    = 120;
-  const grandTotal    = roomSubtotal + serviceFee;
+  const nightsCount  = calculateNights();
+  const roomSubtotal = room.pricePerNight * nightsCount;
+  const serviceFee   = 120;
+  const grandTotal   = roomSubtotal + serviceFee;
 
+  // DIRECT REDIRECT LOGIC ON RESERVE BUTTON CLICK
   const handleReserve = () => {
+    if (!isLoggedIn) {
+      // Save current room path (e.g., /rooms/deluxe-suite)
+      const targetRoomUrl = encodeURIComponent(`/rooms/${room.id}`);
+      // Redirect straight to login with target room attached
+      router.push(`/login?callbackUrl=${targetRoomUrl}`);
+      return;
+    }
+
     setModalDetails({
       checkIn: checkInDate,
       checkOut: checkOutDate,
@@ -210,7 +219,6 @@ export default function RoomDetailPage() {
 
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased">
-
       {/* BACK BAR */}
       <div className="bg-[#18181B] border-b border-[#27272A] px-6 md:px-12 py-2.5">
         <Link
@@ -251,11 +259,8 @@ export default function RoomDetailPage() {
       {/* MAIN CONTENT */}
       <section className="max-w-7xl mx-auto px-6 md:px-12 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-
           {/* LEFT COLUMN */}
           <div className="lg:col-span-7 space-y-12">
-
-            {/* Description */}
             <div className="space-y-6">
               <h2 className="font-serif text-2xl md:text-3xl font-normal text-[#1A1918]">
                 A Sanctuary of Timeless Elegance
@@ -417,6 +422,7 @@ export default function RoomDetailPage() {
                   </div>
                 </div>
 
+                {/* PRESSING THIS REDIRECTS TO LOGIN IF UNAUTHENTICATED */}
                 <button
                   onClick={handleReserve}
                   className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-4 rounded transition-all shadow-md flex items-center justify-center gap-2"

@@ -2,15 +2,48 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add your sign-in logic here
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Sign in failed");
+      }
+
+      const destination =
+        data.user.role === "admin"
+          ? "/admin"
+          : data.user.role === "receptionist"
+            ? "/receptionist"
+            : "/";
+      router.push(destination);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,6 +92,8 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. julian@luxury.com"
                   className="w-full bg-[#f4f1ea] border border-stone-300 text-xs px-9 py-3 text-neutral-800 focus:outline-none focus:border-neutral-800 transition-colors placeholder:text-neutral-400"
                 />
@@ -83,6 +118,8 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full bg-[#f4f1ea] border border-stone-300 text-xs px-9 py-3 text-neutral-800 focus:outline-none focus:border-neutral-800 transition-colors placeholder:text-neutral-400"
                 />
@@ -96,12 +133,20 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                {error}
+              </p>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-[#1c1c1c] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-black transition-all shadow-md mt-2"
+              disabled={loading}
+              className="w-full bg-[#1c1c1c] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-black transition-all shadow-md mt-2 disabled:opacity-50"
             >
-              SIGN IN
+              {loading ? "SIGNING IN..." : "SIGN IN"}
             </button>
           </form>
 

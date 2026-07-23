@@ -2,7 +2,15 @@ import { Schema, models, model, type InferSchemaType } from "mongoose";
 
 const ReservationSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Registered guest, when the booking was made by a logged-in user.
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    // Walk-in guest details, used instead of userId when booked at the front desk
+    // without requiring the guest to have an account.
+    guestName: { type: String },
+    guestPhone: { type: String },
+    guestEmail: { type: String },
+    guestIdNumber: { type: String },
+    isWalkIn: { type: Boolean, default: false },
     roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true },
     // Planned/booked dates
     checkIn: { type: Date, required: true },
@@ -17,6 +25,7 @@ const ReservationSchema = new Schema(
     },
     guests: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
+    specialRequests: { type: String },
     createdBy: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

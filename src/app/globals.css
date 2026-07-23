@@ -1,4 +1,4 @@
- 
+
  @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,3 +7,9 @@
 [data-nextjs-toast],
 nextjs-portal {
   display: none !important;}
+
+@layer components {
+  .input {
+    @apply w-full bg-white border border-zinc-300 rounded-lg text-sm px-3 py-2.5 text-zinc-800 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-colors placeholder:text-zinc-400;
+  }
+}

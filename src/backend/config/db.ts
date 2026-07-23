@@ -1,5 +1,11 @@
 import dns from "dns";
 import mongoose from "mongoose";
+// Side-effect import: registers every model's schema on this mongoose
+// instance, regardless of which specific model file the calling controller
+// imported. Without this, populate("someRef") can throw MissingSchemaError
+// if that ref's model was never imported anywhere in the current route's
+// module graph (e.g. RoomType populating "Amenity" when only RoomType was imported).
+import "@/backend/models";
 
 // The local DNS resolver (often 127.0.0.1 behind a VPN/proxy) can refuse SRV
 // queries needed for mongodb+srv:// URIs. Fall back to a public resolver for

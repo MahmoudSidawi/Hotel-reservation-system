@@ -15,6 +15,11 @@ export async function getPaymentById(id: string) {
   return payment;
 }
 
+export async function getPaymentByReservationId(reservationId: string) {
+  await connectToDatabase();
+  return Payment.findOne({ reservationId }).lean();
+}
+
 export async function createPayment(data: CreatePaymentInput) {
   await connectToDatabase();
   return (await Payment.create(data)).toObject();

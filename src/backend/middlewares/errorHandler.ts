@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, UnauthorizedError, ForbiddenError, ConflictError } from "@/lib/errors";
 
 export function jsonError(error: unknown) {
   if (error instanceof ZodError) {
@@ -12,6 +12,18 @@ export function jsonError(error: unknown) {
 
   if (error instanceof NotFoundError) {
     return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+
+  if (error instanceof UnauthorizedError) {
+    return NextResponse.json({ error: error.message }, { status: 401 });
+  }
+
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+
+  if (error instanceof ConflictError) {
+    return NextResponse.json({ error: error.message }, { status: 409 });
   }
 
   if (error instanceof Error && error.name === "ValidationError") {

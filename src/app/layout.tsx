@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="bg-stone-50 font-sans text-neutral-900 antialiased selection:bg-amber-200">
         
         {children}

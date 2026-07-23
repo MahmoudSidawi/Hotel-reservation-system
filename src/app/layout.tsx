@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "./components/navbar";
-import Footer from "./components/footer";
+
 
 export const metadata: Metadata = {
   title: "Velora | Luxury Hotel & Resort",
@@ -16,9 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="bg-stone-50 font-sans text-neutral-900 antialiased selection:bg-amber-200">
-        <Navbar />
+        
         {children}
-        <Footer />
+     
       </body>
     </html>
   );}

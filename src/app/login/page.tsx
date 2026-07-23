@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
 
@@ -48,10 +49,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-stone-100">
-    
+      {/* Navbar Included Here */}
+      <Navbar />
 
       {/* Hero Background with Centered Glass Card */}
-      <main className="relative flex-1 flex items-center justify-center py-16 px-4 bg-cover bg-center overflow-hidden"
+      <main
+        className="relative flex-1 flex items-center justify-center py-16 px-4 bg-cover bg-center overflow-hidden"
         style={{
           backgroundImage: `url('/login-back.png')`,
         }}
@@ -126,7 +129,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 text-neutral-500 hover:text-neutral-800 text-xs"
+                  className="absolute right-3 text-neutral-500 hover:text-neutral-800 text-xs cursor-pointer"
                 >
                   👁
                 </button>
@@ -144,13 +147,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1c1c1c] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-black transition-all shadow-md mt-2 disabled:opacity-50"
+              className="w-full bg-[#1c1c1c] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-black transition-all shadow-md mt-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? "SIGNING IN..." : "SIGN IN"}
             </button>
           </form>
-
-   
 
           {/* Bottom Links */}
           <div className="mt-8 text-center space-y-2 text-xs text-neutral-600">
@@ -173,7 +174,8 @@ export default function LoginPage() {
         </div>
       </main>
 
-      
+      {/* Footer Included Here */}
+      <Footer />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Navbar from '../components/navbar'; // Adjust this import path if needed
+import Footer from '../components/footer'; // Adjust this import path if needed
 import { 
   Wifi, 
   Coffee, 
@@ -19,41 +21,15 @@ import {
   Star,
   Calendar,
   ArrowLeft,
-  ArrowRight,
   Info,
   X,
   CreditCard,
-  CheckCircle,
-  MapPin,
-  Phone,
-  Mail,
-  ShieldCheck
+  CheckCircle
 } from 'lucide-react';
-
-const Instagram = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-  </svg>
-);
-
-const Facebook = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-  </svg>
-);
-
-const Twitter = ({ className = "w-4 h-4" }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
-  </svg>
-);
 
 // ============================================================================
 // TYPES & DATA STRUCTURES
 // ============================================================================
-
 export interface VeloraAmenity {
   title: string;
   iconName: 'wifi' | 'coffee' | 'climate' | 'tv' | 'balcony' | 'bed' | 'dining' | 'minibar' | 'pool' | 'bath';
@@ -312,137 +288,8 @@ const getAmenityIcon = (iconName: string) => {
 };
 
 // ============================================================================
-// SUB-COMPONENT: NAVBAR & FOOTER
-// ============================================================================
-
-function VeloraNavHeader({
-  currentView,
-  onNavigateView,
-  onOpenBookModal,
-}: {
-  currentView: 'CATALOG' | 'DETAIL';
-  onNavigateView: (v: 'CATALOG' | 'DETAIL') => void;
-  onOpenBookModal: () => void;
-}) {
-  return (
-    <header className="sticky top-0 z-40 bg-[#18181B] border-b border-[#27272A] text-white px-4 md:px-8 py-3.5 flex items-center justify-between font-sans">
-      <div 
-        onClick={() => onNavigateView('CATALOG')}
-        className="flex items-center gap-3 cursor-pointer group select-none"
-      >
-        <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center text-xs font-serif font-bold text-white group-hover:border-[#C5A46D] group-hover:text-[#C5A46D] transition-colors">
-          v
-        </div>
-        <span className="font-serif text-xl tracking-wider font-normal text-white group-hover:text-[#E2D4B9] transition-colors">
-          Velora
-        </span>
-      </div>
-
-      <nav className="hidden md:flex items-center gap-8 text-xs tracking-wider text-[#A09C94]">
-        <button
-          onClick={() => onNavigateView('CATALOG')}
-          className={`transition-colors py-1 hover:text-white ${
-            currentView === 'CATALOG' ? 'text-white border-b border-[#C5A46D]' : ''
-          }`}
-        >
-          Rooms
-        </button>
-        <button onClick={() => onNavigateView('CATALOG')} className="hover:text-white transition-colors">Amenities</button>
-        <button onClick={() => onNavigateView('CATALOG')} className="hover:text-white transition-colors">Gallery</button>
-        <button onClick={() => onNavigateView('CATALOG')} className="hover:text-white transition-colors">Stories</button>
-        <button onClick={() => onNavigateView('CATALOG')} className="hover:text-white transition-colors">Contact</button>
-      </nav>
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenBookModal}
-          className="px-4 py-2 border border-white/60 hover:border-white text-xs font-medium tracking-wider text-white hover:bg-white/10 rounded transition-all flex items-center gap-1.5"
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Book Now</span>
-        </button>
-      </div>
-    </header>
-  );
-}
-
-function VeloraFooterSub({ onNavigateCatalog }: { onNavigateCatalog: () => void }) {
-  return (
-    <footer className="bg-[#FAF8F5] text-[#2C2A29] border-t border-[#E8E4DD] font-sans pt-16 pb-12 px-6 md:px-12">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
-        <div className="space-y-4">
-          <h3 className="font-serif text-2xl tracking-wide text-[#1C1B1A]">Velora</h3>
-          <p className="text-xs text-[#6E6B65] leading-relaxed max-w-xs">
-            Experience timeless hospitality and curated comfort at our coastal sanctuary, designed for quiet indulgence.
-          </p>
-          <div className="flex items-center gap-3 pt-2 text-[#6E6B65]">
-            <a href="#instagram" className="hover:text-[#1C1B1A] transition-colors p-1.5 rounded-full border border-[#E2DDD5] bg-white">
-              <Instagram className="w-3.5 h-3.5" />
-            </a>
-            <a href="#facebook" className="hover:text-[#1C1B1A] transition-colors p-1.5 rounded-full border border-[#E2DDD5] bg-white">
-              <Facebook className="w-3.5 h-3.5" />
-            </a>
-            <a href="#twitter" className="hover:text-[#1C1B1A] transition-colors p-1.5 rounded-full border border-[#E2DDD5] bg-white">
-              <Twitter className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[#1C1B1A]">EXPLORE</h4>
-          <ul className="space-y-2 text-xs text-[#6E6B65]">
-            <li><button onClick={onNavigateCatalog} className="hover:text-[#1C1B1A] transition-colors">Luxury Suites</button></li>
-            <li><button onClick={onNavigateCatalog} className="hover:text-[#1C1B1A] transition-colors">Amenities</button></li>
-            <li><a href="#dining" className="hover:text-[#1C1B1A] transition-colors">Dining</a></li>
-            <li><a href="#wellness" className="hover:text-[#1C1B1A] transition-colors">Wellness Spa</a></li>
-            <li><a href="#gallery" className="hover:text-[#1C1B1A] transition-colors">Gallery</a></li>
-          </ul>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[#1C1B1A]">ASSISTANCE</h4>
-          <ul className="space-y-2 text-xs text-[#6E6B65]">
-            <li><button onClick={onNavigateCatalog} className="hover:text-[#1C1B1A] transition-colors">Reservations</button></li>
-            <li><a href="#faqs" className="hover:text-[#1C1B1A] transition-colors">FAQs</a></li>
-            <li><a href="#policies" className="hover:text-[#1C1B1A] transition-colors">Policies</a></li>
-            <li><a href="#careers" className="hover:text-[#1C1B1A] transition-colors">Careers</a></li>
-          </ul>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[#1C1B1A]">CONTACT</h4>
-          <ul className="space-y-2.5 text-xs text-[#6E6B65]">
-            <li className="flex items-start gap-2">
-              <MapPin className="w-3.5 h-3.5 text-[#A08862] shrink-0 mt-0.5" />
-              <span>123 Coastal Way, Seafront, CA 90210</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5 text-[#A08862] shrink-0" />
-              <span>+1 (555) 012-3456</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Mail className="w-3.5 h-3.5 text-[#A08862] shrink-0" />
-              <span>hello@velora.com</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-[#E8E4DD] flex flex-col md:flex-row justify-between items-center text-[11px] text-[#8C8880] gap-4">
-        <p>© 2026 Velora Hospitality Group. All rights reserved.</p>
-        <div className="flex items-center gap-6">
-          <a href="#privacy" className="hover:text-[#1C1B1A] transition-colors">Privacy Policy</a>
-          <a href="#terms" className="hover:text-[#1C1B1A] transition-colors">Terms of Service</a>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-// ============================================================================
 // SUB-COMPONENT: BOOKING CONFIRMATION MODAL
 // ============================================================================
-
 function BookingModal({
   room,
   bookingDetails,
@@ -490,7 +337,6 @@ function BookingModal({
             <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-700">
               <CheckCircle className="w-8 h-8" />
             </div>
-
             <div className="space-y-2">
               <h4 className="font-serif text-2xl font-normal text-[#1A1918]">
                 We look forward to welcoming you, {guestName}!
@@ -499,7 +345,6 @@ function BookingModal({
                 Your booking reference is <span className="font-mono font-bold text-[#1A1918] bg-[#EAE2D5] px-2 py-0.5 rounded">{resCode}</span>
               </p>
             </div>
-
             <div className="bg-white p-4 rounded-lg border border-[#E2DDD5] text-left text-xs space-y-2 font-light text-[#5C5954]">
               <div className="flex justify-between border-b border-[#F2EEE8] pb-2">
                 <span className="font-semibold text-[#1A1918]">Accommodation</span>
@@ -518,11 +363,9 @@ function BookingModal({
                 <span className="font-serif text-base">${bookingDetails.total}</span>
               </div>
             </div>
-
             <p className="text-[11px] text-[#8C8880]">
               A confirmation email has been dispatched to <span className="font-medium text-[#1A1918]">{guestEmail}</span>.
             </p>
-
             <button
               onClick={onClose}
               className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors"
@@ -619,7 +462,6 @@ function BookingModal({
 // ============================================================================
 // PAGE 1: CATALOG LISTING VIEW ("Our Rooms")
 // ============================================================================
-
 function RoomsCatalogPage({
   onSelectRoom,
 }: {
@@ -664,7 +506,7 @@ function RoomsCatalogPage({
 
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased">
-      {/* HERO BANNER - Picture 2 */}
+      {/* HERO BANNER */}
       <section 
         className="relative h-[340px] md:h-[420px] bg-cover bg-center flex items-center justify-center text-center px-4 overflow-hidden"
         style={{
@@ -892,7 +734,6 @@ function RoomsCatalogPage({
           <p className="text-xs text-[#736F68] font-light leading-relaxed">
             Join our list to receive exclusive offers, seasonal updates, and priority booking for our signature suites.
           </p>
-
           {newsletterSubscribed ? (
             <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-medium">
               Thank you for subscribing to The Velora Collection.
@@ -924,7 +765,6 @@ function RoomsCatalogPage({
 // ============================================================================
 // PAGE 2: ROOM DETAILS VIEW ("Luxury Oceanfront Suite")
 // ============================================================================
-
 function RoomDetailPage({
   roomId,
   onBackToRooms,
@@ -937,7 +777,6 @@ function RoomDetailPage({
   onOpenReserveModal: (room: VeloraRoom, details: BookingDetails) => void;
 }) {
   const room = VELORA_ROOMS.find((r) => r.id === roomId) || VELORA_ROOMS[0];
-
   const [checkInDate, setCheckInDate] = useState<string>('2026-10-24');
   const [checkOutDate, setCheckOutDate] = useState<string>('2026-10-27');
   const [guestsCount, setGuestsCount] = useState<number>(2);
@@ -960,18 +799,6 @@ function RoomDetailPage({
   const serviceFee = 120;
   const grandTotal = roomSubtotal + serviceFee;
 
-  const recommendations = VELORA_ROOMS.filter((r) => r.id !== room.id).slice(0, 2);
-
-  const handleReserve = () => {
-    onOpenReserveModal(room, {
-      checkIn: checkInDate,
-      checkOut: checkOutDate,
-      guests: guestsCount,
-      nights: nightsCount,
-      total: grandTotal,
-    });
-  };
-
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased">
       <div className="bg-[#18181B] border-b border-[#27272A] px-6 md:px-12 py-2.5">
@@ -984,7 +811,7 @@ function RoomDetailPage({
         </button>
       </div>
 
-      {/* HERO BANNER - Picture 1 */}
+      {/* HERO BANNER */}
       <section 
         className="relative h-[380px] md:h-[480px] bg-cover bg-center flex items-end justify-start p-6 md:p-16 overflow-hidden"
         style={{
@@ -1043,7 +870,7 @@ function RoomDetailPage({
               </div>
             </div>
 
-            {/* CURATED AMENITIES - Picture 1 */}
+            {/* CURATED AMENITIES */}
             <div className="space-y-6 pt-6 border-t border-[#EAE6DF]">
               <div className="flex items-center gap-4">
                 <h3 className="font-serif text-xl font-normal text-[#1A1918] shrink-0">
@@ -1051,7 +878,6 @@ function RoomDetailPage({
                 </h3>
                 <div className="h-[1px] bg-[#EAE6DF] w-full" />
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {room.amenities.map((item, idx) => (
                   <div key={idx} className="bg-[#F4F1EA] rounded-md p-3.5 flex items-center gap-3 border border-[#E8E3DA]">
@@ -1079,7 +905,6 @@ function RoomDetailPage({
                   <span>View All Photos</span>
                 </button>
               </div>
-
               <div className="grid grid-cols-3 gap-3">
                 {room.galleryImages.map((img, idx) => (
                   <div
@@ -1119,7 +944,7 @@ function RoomDetailPage({
             </div>
           </div>
 
-          {/* RIGHT COLUMN STICKY CARD - Picture 1 */}
+          {/* RIGHT COLUMN STICKY CARD */}
           <div className="lg:col-span-5 sticky top-24">
             <div className="bg-white rounded-lg border border-[#E2DDD5] shadow-2xl overflow-hidden">
               <div className="bg-[#18181B] text-white p-6 space-y-2">
@@ -1151,7 +976,6 @@ function RoomDetailPage({
                       />
                     </div>
                   </div>
-
                   <div className="p-3 space-y-1">
                     <label className="text-[9px] font-bold uppercase tracking-wider text-[#8C8880] block">CHECK-OUT</label>
                     <div className="flex items-center gap-1.5 text-[#1A1918]">
@@ -1166,108 +990,70 @@ function RoomDetailPage({
                   </div>
                 </div>
 
-                <div className="bg-[#FAF8F5] border border-[#E2DDD5] rounded-md p-3 space-y-1 text-xs">
+                <div className="space-y-1">
                   <label className="text-[9px] font-bold uppercase tracking-wider text-[#8C8880] block">GUESTS</label>
                   <select
                     value={guestsCount}
                     onChange={(e) => setGuestsCount(Number(e.target.value))}
-                    className="w-full bg-transparent font-medium text-[#1A1918] focus:outline-none cursor-pointer"
+                    className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded-md p-3 text-xs font-medium text-[#1A1918] focus:outline-none focus:border-[#C5A46D] cursor-pointer"
                   >
-                    <option value={1}>1 Adult</option>
-                    <option value={2}>2 Adults</option>
-                    <option value={3}>3 Adults</option>
-                    <option value={4}>4 Adults</option>
+                    <option value={1}>1 Guest</option>
+                    <option value={2}>2 Guests</option>
+                    <option value={3}>3 Guests</option>
+                    <option value={4}>4 Guests</option>
                   </select>
                 </div>
 
-                <div className="space-y-2.5 text-xs text-[#5C5954] pt-2 border-t border-[#EAE6DF]">
-                  <div className="flex justify-between items-center">
-                    <span>${room.pricePerNight} x {nightsCount} nights</span>
-                    <span className="font-mono font-medium text-[#1A1918]">${roomSubtotal}</span>
+                <div className="space-y-3 pt-2 text-xs text-[#5C5954]">
+                  <div className="flex justify-between">
+                    <span>${room.pricePerNight} × {nightsCount} nights</span>
+                    <span className="font-medium text-[#1A1918]">${roomSubtotal}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>Service & Wellness Fee</span>
-                    <span className="font-mono font-medium text-[#1A1918]">${serviceFee}</span>
+                  <div className="flex justify-between">
+                    <span>Resort & Service Fee</span>
+                    <span className="font-medium text-[#1A1918]">${serviceFee}</span>
                   </div>
-
-                  <div className="flex justify-between items-center pt-3 border-t border-[#EAE6DF] text-sm font-semibold text-[#1A1918]">
+                  <div className="flex justify-between pt-3 border-t border-[#EAE6DF] font-bold text-sm text-[#1A1918]">
                     <span>Total</span>
-                    <span className="font-serif text-xl font-bold">${grandTotal}</span>
+                    <span className="font-serif text-lg">${grandTotal}</span>
                   </div>
                 </div>
 
                 <button
-                  type="button"
-                  onClick={handleReserve}
-                  className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md"
+                  onClick={() =>
+                    onOpenReserveModal(room, {
+                      checkIn: checkInDate,
+                      checkOut: checkOutDate,
+                      guests: guestsCount,
+                      nights: nightsCount,
+                      total: grandTotal,
+                    })
+                  }
+                  className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-4 rounded transition-all shadow-md flex items-center justify-center gap-2"
                 >
-                  RESERVE NOW
+                  <CreditCard className="w-4 h-4 text-[#C5A46D]" />
+                  <span>RESERVE NOW</span>
                 </button>
-
-                <p className="text-[11px] text-center text-[#8C8880] font-light">
-                  You won't be charged yet
-                </p>
               </div>
             </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* RECOMMENDATIONS */}
-      <section className="bg-[#FAF8F5] border-t border-[#EAE6DF] py-16 px-6 md:px-12">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="flex items-end justify-between">
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#C5A46D] block">RECOMMENDATIONS</span>
-              <h2 className="font-serif text-2xl md:text-3xl font-normal text-[#1A1918]">You might also enjoy</h2>
-            </div>
-            <button
-              onClick={onBackToRooms}
-              className="text-xs font-bold uppercase tracking-wider text-[#1A1918] hover:text-[#C5A46D] flex items-center gap-1 transition-colors"
-            >
-              <span>VIEW ALL ROOMS</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {recommendations.map((rec) => (
-              <div
-                key={rec.id}
-                onClick={() => {
-                  onSelectRoom(rec.id);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="bg-white rounded-lg border border-[#ECE7DF] shadow-sm hover:shadow-lg transition-all overflow-hidden group cursor-pointer"
-              >
-                <div className="h-64 overflow-hidden bg-neutral-200">
-                  <img src={rec.heroImage} alt={rec.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <div className="p-6 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-serif text-xl font-normal text-[#1A1918] group-hover:text-[#A08149] transition-colors">{rec.title}</h3>
-                    <span className="text-[10px] uppercase tracking-widest text-[#8C8880] block mt-1">FROM ${rec.pricePerNight} / NIGHT</span>
-                  </div>
-                  <button className="p-2.5 rounded-full border border-[#E2DDD5] text-[#1A1918] group-hover:bg-[#1A1918] group-hover:text-white transition-all">
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
+      {/* PHOTO LIGHTBOX MODAL */}
       {activePhotoModal && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
           <button
             onClick={() => setActivePhotoModal(null)}
-            className="absolute top-6 right-6 text-white p-2 rounded-full bg-white/10 hover:bg-white/20"
+            className="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10"
           >
             <X className="w-6 h-6" />
           </button>
-          <img src={activePhotoModal} alt="Expanded view" className="max-w-full max-h-[85vh] object-contain rounded" />
+          <img
+            src={activePhotoModal}
+            alt="Expanded view"
+            className="max-w-full max-h-[85vh] object-contain rounded"
+          />
         </div>
       )}
     </div>
@@ -1275,83 +1061,64 @@ function RoomDetailPage({
 }
 
 // ============================================================================
-// MAIN EXPORTED SINGLE-FILE COMPONENT: ROOMS
+// MAIN PAGE WRAPPER COMPONENT
 // ============================================================================
-
-export default function Rooms() {
-  const [viewState, setViewState] = useState<'CATALOG' | 'DETAIL'>('CATALOG');
+export default function VeloraRoomsApp() {
+  const [currentView, setCurrentView] = useState<'CATALOG' | 'DETAIL'>('CATALOG');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('luxury-oceanfront-suite');
-  const [activeBookingModal, setActiveBookingModal] = useState<{
-    room: VeloraRoom;
-    details: BookingDetails;
-  } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalBookingDetails, setModalBookingDetails] = useState<BookingDetails>({
+    checkIn: '2026-10-24',
+    checkOut: '2026-10-27',
+    guests: 2,
+    nights: 3,
+    total: 2670,
+  });
 
-  const handleSelectRoom = (roomId: string) => {
-    setSelectedRoomId(roomId);
-    setViewState('DETAIL');
+  const activeRoom = VELORA_ROOMS.find((r) => r.id === selectedRoomId) || VELORA_ROOMS[0];
+
+  const handleSelectRoom = (id: string) => {
+    setSelectedRoomId(id);
+    setCurrentView('DETAIL');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenBookModal = (
-    room?: VeloraRoom,
-    details?: BookingDetails
-  ) => {
-    const targetRoom = room || VELORA_ROOMS.find((r) => r.id === selectedRoomId) || VELORA_ROOMS[0];
-    const targetDetails = details || {
-      checkIn: '2026-10-24',
-      checkOut: '2026-10-27',
-      guests: 2,
-      nights: 3,
-      total: targetRoom.pricePerNight * 3 + 120,
-    };
-    setActiveBookingModal({ room: targetRoom, details: targetDetails });
+  const handleOpenReserveModal = (room: VeloraRoom, details: BookingDetails) => {
+    setSelectedRoomId(room.id);
+    setModalBookingDetails(details);
+    setIsModalOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans">
-      {/* Top Header */}
-      <VeloraNavHeader
-        currentView={viewState}
-        onNavigateView={(v) => {
-          setViewState(v);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onOpenBookModal={() => handleOpenBookModal()}
-      />
+    <div className="min-h-screen flex flex-col justify-between bg-[#FAF8F5]">
+      {/* Top Main Navbar imported from external file */}
+      <Navbar />
 
-      {/* Main View Router */}
-      <main className="flex-1">
-        {viewState === 'CATALOG' ? (
-          <RoomsCatalogPage
-            onSelectRoom={handleSelectRoom}
-          />
+      <main className="flex-grow">
+        {currentView === 'CATALOG' ? (
+          <RoomsCatalogPage onSelectRoom={handleSelectRoom} />
         ) : (
           <RoomDetailPage
             roomId={selectedRoomId}
             onBackToRooms={() => {
-              setViewState('CATALOG');
+              setCurrentView('CATALOG');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onSelectRoom={handleSelectRoom}
-            onOpenReserveModal={(room, details) => handleOpenBookModal(room, details)}
+            onOpenReserveModal={handleOpenReserveModal}
           />
         )}
       </main>
 
-      {/* Footer */}
-      <VeloraFooterSub
-        onNavigateCatalog={() => {
-          setViewState('CATALOG');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-      />
+      {/* Bottom Main Footer imported from external file */}
+      <Footer />
 
-      {/* Booking Modal */}
-      {activeBookingModal && (
+      {/* Global Booking Modal */}
+      {isModalOpen && (
         <BookingModal
-          room={activeBookingModal.room}
-          bookingDetails={activeBookingModal.details}
-          onClose={() => setActiveBookingModal(null)}
+          room={activeRoom}
+          bookingDetails={modalBookingDetails}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>

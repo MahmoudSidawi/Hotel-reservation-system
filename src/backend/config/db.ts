@@ -1,4 +1,10 @@
+import dns from "dns";
 import mongoose from "mongoose";
+
+// The local DNS resolver (often 127.0.0.1 behind a VPN/proxy) can refuse SRV
+// queries needed for mongodb+srv:// URIs. Fall back to a public resolver for
+// Node's own lookups without touching OS-wide DNS settings.
+dns.setServers(["8.8.8.8", "1.1.1.1", ...dns.getServers()]);
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -30,7 +36,13 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     });
   }
 
-  cache.conn = await cache.promise;
+  try {
+    cache.conn = await cache.promise;
+  } catch (error) {
+    cache.promise = null;
+    throw error;
+  }
+
   return cache.conn;
 }
 

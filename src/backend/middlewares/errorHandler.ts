@@ -34,6 +34,13 @@ export function jsonError(error: unknown) {
     return NextResponse.json({ error: "Duplicate value violates a unique constraint" }, { status: 409 });
   }
 
+  if (error instanceof Error && (error.name === "MongooseServerSelectionError" || error.message.includes("ECONNREFUSED"))) {
+    return NextResponse.json(
+      { error: "Database connection failed. Please ensure MongoDB is running or check MONGODB_URI in .env.local" },
+      { status: 500 }
+    );
+  }
+
   console.error(error);
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }

@@ -12,7 +12,7 @@ import "@/backend/models";
 // Node's own lookups without touching OS-wide DNS settings.
 dns.setServers(["8.8.8.8", "1.1.1.1", ...dns.getServers()]);
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/hotel_db";
 
 if (!MONGODB_URI) {
   throw new Error("Missing MONGODB_URI environment variable");

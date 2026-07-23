@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   BedDouble,
@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   UserCheck,
   AlertTriangle,
+  RefreshCw,
+  Loader2,
   LucideIcon,
 } from 'lucide-react';
 import {
@@ -27,7 +29,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Cell,
 } from 'recharts';
 
 // ==========================================
@@ -40,7 +41,7 @@ export type NavSection =
   | 'CUSTOMERS'
   | 'USERS';
 
-export type ReservationStatus = 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED';
+export type ReservationStatus = 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'PENDING';
 
 export interface Reservation {
   id: string;
@@ -56,6 +57,7 @@ export interface Reservation {
   status: ReservationStatus;
   grossValue: number;
   createdAt: string;
+  roomId?: string;
 }
 
 export type RoomStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE';
@@ -86,7 +88,7 @@ export interface StaffUser {
   id: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'RECEPTIONIST' | 'MANAGER';
+  role: 'ADMIN' | 'RECEPTIONIST' | 'MANAGER' | 'GUEST';
   department: string;
   status: 'ACTIVE' | 'INACTIVE';
 }
@@ -96,105 +98,6 @@ export interface MonthlyRevenueData {
   revenue: number;
   occupancy: number;
 }
-
-// ==========================================
-// INITIAL MOCK DATA
-// ==========================================
-const INITIAL_ROOMS: Room[] = [
-  { id: 'rm-101', number: '101', title: 'Deluxe Ocean Suite', type: 'Deluxe Suite', floor: 1, maxGuests: 2, pricePerNight: 280, status: 'AVAILABLE', features: ['Ocean View', 'King Bed', 'Free Wi-Fi', 'Balcony'] },
-  { id: 'rm-102', number: '102', title: 'Executive Garden Villa', type: 'Executive Villa', floor: 1, maxGuests: 4, pricePerNight: 450, status: 'OCCUPIED', features: ['Private Pool', 'Garden View', '2 Bedrooms', 'Jacuzzi'] },
-  { id: 'rm-103', number: '103', title: 'Royal Penthouse Suite', type: 'Penthouse', floor: 5, maxGuests: 6, pricePerNight: 850, status: 'RESERVED', features: ['Panoramic View', 'Private Elevator', 'Butler Service', 'Terrace'] },
-  { id: 'rm-104', number: '104', title: 'Standard Twin Room', type: 'Standard Room', floor: 2, maxGuests: 2, pricePerNight: 160, status: 'AVAILABLE', features: ['Twin Beds', 'City View', 'Work Desk', 'Smart TV'] },
-  { id: 'rm-105', number: '105', title: 'Presidential Lagoon Suite', type: 'Lagoon Suite', floor: 1, maxGuests: 4, pricePerNight: 620, status: 'MAINTENANCE', features: ['Direct Lagoon Access', 'Spa Bath', 'Breakfast Included'] },
-  { id: 'rm-106', number: '106', title: 'Luxury Horizon Suite', type: 'Horizon Suite', floor: 3, maxGuests: 2, pricePerNight: 390, status: 'AVAILABLE', features: ['Sunset View', 'Mini Bar', 'Espresso Machine'] },
-];
-
-const INITIAL_RESERVATIONS: Reservation[] = [
-  {
-    id: 'res-1001',
-    code: 'VEL-8921',
-    clientName: 'Lord Alistair Vance',
-    clientEmail: 'a.vance@royalmail.co.uk',
-    roomNumber: '102',
-    roomTitle: 'Executive Garden Villa',
-    checkInDate: '2026-07-20',
-    checkOutDate: '2026-07-25',
-    nightsCount: 5,
-    guestsCount: 2,
-    grossValue: 2250,
-    status: 'CHECKED_IN',
-    createdAt: '2026-07-10',
-  },
-  {
-    id: 'res-1002',
-    code: 'VEL-8922',
-    clientName: 'Sophia Montgomery',
-    clientEmail: 'sophia.m@montgomery.com',
-    roomNumber: '103',
-    roomTitle: 'Royal Penthouse Suite',
-    checkInDate: '2026-07-24',
-    checkOutDate: '2026-07-28',
-    nightsCount: 4,
-    guestsCount: 3,
-    grossValue: 3400,
-    status: 'CONFIRMED',
-    createdAt: '2026-07-15',
-  },
-  {
-    id: 'res-1003',
-    code: 'VEL-8923',
-    clientName: 'David K. Sterling',
-    clientEmail: 'david@sterlingholdings.io',
-    roomNumber: '101',
-    roomTitle: 'Deluxe Ocean Suite',
-    checkInDate: '2026-07-18',
-    checkOutDate: '2026-07-21',
-    nightsCount: 3,
-    guestsCount: 1,
-    grossValue: 840,
-    status: 'CHECKED_OUT',
-    createdAt: '2026-07-08',
-  },
-  {
-    id: 'res-1004',
-    code: 'VEL-8924',
-    clientName: 'Elena Rostova',
-    clientEmail: 'elena.rostova@designstudio.fr',
-    roomNumber: '106',
-    roomTitle: 'Luxury Horizon Suite',
-    checkInDate: '2026-08-01',
-    checkOutDate: '2026-08-05',
-    nightsCount: 4,
-    guestsCount: 2,
-    grossValue: 1560,
-    status: 'CONFIRMED',
-    createdAt: '2026-07-19',
-  },
-];
-
-const INITIAL_GUESTS: GuestProfile[] = [
-  { id: 'gst-1', name: 'Lord Alistair Vance', email: 'a.vance@royalmail.co.uk', phone: '+44 7911 123456', tier: 'ROYAL', totalStays: 4, totalSpent: 9200 },
-  { id: 'gst-2', name: 'Sophia Montgomery', email: 'sophia.m@montgomery.com', phone: '+1 212 555 0198', tier: 'PLATINUM', totalStays: 2, totalSpent: 6800 },
-  { id: 'gst-3', name: 'David K. Sterling', email: 'david@sterlingholdings.io', phone: '+1 415 555 0142', tier: 'VIP', totalStays: 6, totalSpent: 12400 },
-  { id: 'gst-4', name: 'Elena Rostova', email: 'elena.rostova@designstudio.fr', phone: '+33 1 42 68 55 00', tier: 'STANDARD', totalStays: 1, totalSpent: 1560 },
-];
-
-const INITIAL_STAFF: StaffUser[] = [
-  { id: 'stf-1', name: 'Mohammad Khaled', email: 'm.khaled@velorahotel.com', role: 'ADMIN', department: 'Executive Management', status: 'ACTIVE' },
-  { id: 'stf-2', name: 'Manar Sayyah', email: 'manar@velorahotel.com', role: 'MANAGER', department: 'Operations', status: 'ACTIVE' },
-  { id: 'stf-3', name: 'Mahmoud Sidawi', email: 'm.sidawi@velorahotel.com', role: 'RECEPTIONIST', department: 'Front Desk', status: 'ACTIVE' },
-  { id: 'stf-4', name: 'Hidaya Al-Youssef', email: 'hidaya@velorahotel.com', role: 'RECEPTIONIST', department: 'Front Desk', status: 'ACTIVE' },
-];
-
-const REVENUE_DATA: MonthlyRevenueData[] = [
-  { month: 'Jan', revenue: 24500, occupancy: 68 },
-  { month: 'Feb', revenue: 28900, occupancy: 72 },
-  { month: 'Mar', revenue: 34200, occupancy: 81 },
-  { month: 'Apr', revenue: 31000, occupancy: 75 },
-  { month: 'May', revenue: 42800, occupancy: 89 },
-  { month: 'Jun', revenue: 49500, occupancy: 94 },
-  { month: 'Jul', revenue: 52100, occupancy: 96 },
-];
 
 // ==========================================
 // SUB-COMPONENTS
@@ -251,11 +154,11 @@ function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection
       <div className="p-4 border-t border-[#27272A] bg-[#09090B]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center font-bold text-xs text-[#D4AF37]">
-            MK
+            AD
           </div>
           <div>
-            <p className="text-xs font-bold text-white">Mohammad Khaled</p>
-            <p className="text-[10px] text-zinc-500">Administrator</p>
+            <p className="text-xs font-bold text-white">Admin System</p>
+            <p className="text-[10px] text-zinc-500">Connected Live to API</p>
           </div>
         </div>
       </div>
@@ -267,11 +170,23 @@ function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection
 // VIEW MODULES
 // ==========================================
 
-function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate }: any) {
+function OverviewModule({
+  rooms,
+  reservations,
+  monthlyData,
+  onOpenNewReservation,
+  onNavigate,
+}: {
+  rooms: Room[];
+  reservations: Reservation[];
+  monthlyData: MonthlyRevenueData[];
+  onOpenNewReservation: () => void;
+  onNavigate: (s: NavSection) => void;
+}) {
   const totalRooms = rooms.length;
   const occupiedRooms = rooms.filter((r: Room) => r.status === 'OCCUPIED').length;
   const reservedRooms = rooms.filter((r: Room) => r.status === 'RESERVED').length;
-  const occupancyRate = Math.round(((occupiedRooms + reservedRooms) / totalRooms) * 100);
+  const occupancyRate = totalRooms > 0 ? Math.round(((occupiedRooms + reservedRooms) / totalRooms) * 100) : 0;
 
   const activeCheckIns = reservations.filter((r: Reservation) => r.status === 'CHECKED_IN').length;
   const totalRevenue = reservations
@@ -293,6 +208,7 @@ function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate 
           <span>New Reservation</span>
         </button>
       </div>
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
@@ -301,7 +217,7 @@ function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate 
             <BedDouble className="w-5 h-5 text-zinc-400" />
           </div>
           <p className="text-3xl font-bold text-zinc-900">{totalRooms} Suites</p>
-          <p className="text-xs text-zinc-500">100% active capacity</p>
+          <p className="text-xs text-zinc-500">Live MongoDB capacity</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
@@ -310,7 +226,7 @@ function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate 
             <Percent className="w-5 h-5 text-amber-500" />
           </div>
           <p className="text-3xl font-bold text-zinc-900">{occupancyRate}%</p>
-          <p className="text-xs text-emerald-600 font-medium">↑ 12% vs last month</p>
+          <p className="text-xs text-emerald-600 font-medium">Real-time status</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
@@ -336,17 +252,17 @@ function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate 
       <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
         <div>
           <h3 className="text-base font-bold text-zinc-900">Monthly Revenue & Occupancy Trends</h3>
-          <p className="text-xs text-zinc-500">Financial performance for Velora Hotel</p>
+          <p className="text-xs text-zinc-500">Financial performance from database records</p>
         </div>
         <div className="h-64 w-full pt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={monthlyData.length > 0 ? monthlyData : [{ month: 'Current', revenue: totalRevenue, occupancy: occupancyRate }]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717A' }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717A' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#18181B', borderRadius: '8px', border: 'none', color: '#FFF', fontSize: '12px' }}
-                formatter={(val: any) => [`$${val.toLocaleString()}`, 'Revenue']}
+                formatter={(val: any) => [`$${Number(val).toLocaleString()}`, 'Revenue']}
               />
               <Bar dataKey="revenue" fill="#D4AF37" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -367,53 +283,65 @@ function OverviewModule({ rooms, reservations, onOpenNewReservation, onNavigate 
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-zinc-50 border-y border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-                <th className="p-3">Code</th>
-                <th className="p-3">Guest Name</th>
-                <th className="p-3">Room / Suite</th>
-                <th className="p-3">Check-In</th>
-                <th className="p-3">Check-Out</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Total Price</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-              {reservations.slice(0, 4).map((res: Reservation) => (
-                <tr key={res.id} className="hover:bg-zinc-50/80 transition">
-                  <td className="p-3 font-mono font-bold text-amber-700">{res.code}</td>
-                  <td className="p-3 font-bold text-zinc-900">{res.clientName}</td>
-                  <td className="p-3">{res.roomNumber} - {res.roomTitle}</td>
-                  <td className="p-3">{res.checkInDate}</td>
-                  <td className="p-3">{res.checkOutDate}</td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        res.status === 'CHECKED_IN'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : res.status === 'CONFIRMED'
-                          ? 'bg-amber-100 text-amber-800'
-                          : res.status === 'CHECKED_OUT'
-                          ? 'bg-zinc-100 text-zinc-600'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {res.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
+          {reservations.length === 0 ? (
+            <p className="text-xs text-zinc-500 py-6 text-center">No reservations found in the database.</p>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-zinc-50 border-y border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                  <th className="p-3">Code</th>
+                  <th className="p-3">Guest Name</th>
+                  <th className="p-3">Room / Suite</th>
+                  <th className="p-3">Check-In</th>
+                  <th className="p-3">Check-Out</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Total Price</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+                {reservations.slice(0, 5).map((res: Reservation) => (
+                  <tr key={res.id} className="hover:bg-zinc-50/80 transition">
+                    <td className="p-3 font-mono font-bold text-amber-700">{res.code}</td>
+                    <td className="p-3 font-bold text-zinc-900">{res.clientName}</td>
+                    <td className="p-3">{res.roomNumber} - {res.roomTitle}</td>
+                    <td className="p-3">{res.checkInDate}</td>
+                    <td className="p-3">{res.checkOutDate}</td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          res.status === 'CHECKED_IN'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : res.status === 'CONFIRMED'
+                            ? 'bg-amber-100 text-amber-800'
+                            : res.status === 'CHECKED_OUT'
+                            ? 'bg-zinc-100 text-zinc-600'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {res.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function RoomsModule({ rooms, onUpdateStatus, searchQuery }: any) {
+function RoomsModule({
+  rooms,
+  onUpdateStatus,
+  searchQuery,
+}: {
+  rooms: Room[];
+  onUpdateStatus: (id: string, st: RoomStatus) => void;
+  searchQuery: string;
+}) {
   const [filter, setFilter] = useState<'ALL' | RoomStatus>('ALL');
   const filtered = rooms.filter((r: Room) => {
     const matchesStatus = filter === 'ALL' ? true : r.status === filter;
@@ -449,65 +377,83 @@ function RoomsModule({ rooms, onUpdateStatus, searchQuery }: any) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {filtered.map((room: Room) => (
-          <div key={room.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-xs font-mono font-bold text-amber-600 uppercase">Suite #{room.number}</span>
-                  <h3 className="font-bold text-base text-zinc-900">{room.title}</h3>
-                </div>
-                <span
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    room.status === 'AVAILABLE'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : room.status === 'OCCUPIED'
-                      ? 'bg-blue-100 text-blue-800'
-                      : room.status === 'RESERVED'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-rose-100 text-rose-800'
-                  }`}
-                >
-                  {room.status}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center text-xs text-zinc-500 pt-2 border-t border-zinc-100">
-                <span>Capacity: {room.maxGuests} Guests</span>
-                <span className="font-bold text-zinc-900 text-sm">${room.pricePerNight} / night</span>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {room.features.map((a, i) => (
-                  <span key={i} className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-medium">
-                    {a}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl p-12 text-center text-zinc-500 text-xs border border-zinc-200">
+          No rooms match your filter or search criteria.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {filtered.map((room: Room) => (
+            <div key={room.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-mono font-bold text-amber-600 uppercase">Suite #{room.number}</span>
+                    <h3 className="font-bold text-base text-zinc-900">{room.title}</h3>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      room.status === 'AVAILABLE'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : room.status === 'OCCUPIED'
+                        ? 'bg-blue-100 text-blue-800'
+                        : room.status === 'RESERVED'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {room.status}
                   </span>
-                ))}
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-zinc-500 pt-2 border-t border-zinc-100">
+                  <span>Capacity: {room.maxGuests} Guests</span>
+                  <span className="font-bold text-zinc-900 text-sm">${room.pricePerNight} / night</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {room.features.map((a, i) => (
+                    <span key={i} className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-medium">
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-zinc-100">
+                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Update Status</label>
+                <select
+                  value={room.status}
+                  onChange={(e) => onUpdateStatus(room.id, e.target.value as RoomStatus)}
+                  className="w-full p-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-bold text-zinc-800 focus:outline-none"
+                >
+                  <option value="AVAILABLE">AVAILABLE</option>
+                  <option value="RESERVED">RESERVED</option>
+                  <option value="OCCUPIED">OCCUPIED</option>
+                  <option value="MAINTENANCE">MAINTENANCE</option>
+                </select>
               </div>
             </div>
-
-            <div className="pt-4 border-t border-zinc-100">
-              <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Update Status</label>
-              <select
-                value={room.status}
-                onChange={(e) => onUpdateStatus(room.id, e.target.value as RoomStatus)}
-                className="w-full p-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-bold text-zinc-800 focus:outline-none"
-              >
-                <option value="AVAILABLE">AVAILABLE</option>
-                <option value="RESERVED">RESERVED</option>
-                <option value="OCCUPIED">OCCUPIED</option>
-                <option value="MAINTENANCE">MAINTENANCE</option>
-              </select>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function ReservationsModule({ reservations, onUpdateStatus, onDelete, onOpenNew, searchQuery }: any) {
+function ReservationsModule({
+  reservations,
+  onUpdateStatus,
+  onDelete,
+  onOpenNew,
+  searchQuery,
+}: {
+  reservations: Reservation[];
+  onUpdateStatus: (id: string, st: ReservationStatus) => void;
+  onDelete: (id: string) => void;
+  onOpenNew: () => void;
+  searchQuery: string;
+}) {
   const filtered = reservations.filter((r: Reservation) => {
     const q = searchQuery?.trim().toLowerCase() || '';
     if (!q) return true;
@@ -538,94 +484,98 @@ function ReservationsModule({ reservations, onUpdateStatus, onDelete, onOpenNew,
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-              <th className="p-4">Code</th>
-              <th className="p-4">Guest Details</th>
-              <th className="p-4">Room / Suite</th>
-              <th className="p-4">Stay Duration</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Total</th>
-              <th className="p-4 text-right">Workflow Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-            {filtered.map((res: Reservation) => (
-              <tr key={res.id} className="hover:bg-zinc-50/80 transition">
-                <td className="p-4 font-mono font-bold text-amber-700">{res.code}</td>
-                <td className="p-4">
-                  <p className="font-bold text-zinc-900">{res.clientName}</p>
-                  <p className="text-[11px] text-zinc-500">{res.clientEmail}</p>
-                </td>
-                <td className="p-4">
-                  <p className="font-bold text-zinc-900">Suite #{res.roomNumber}</p>
-                  <p className="text-[11px] text-zinc-500">{res.roomTitle}</p>
-                </td>
-                <td className="p-4">
-                  <p className="font-bold text-zinc-900">{res.checkInDate} → {res.checkOutDate}</p>
-                  <p className="text-[11px] text-zinc-500">{res.nightsCount} Nights ({res.guestsCount} Guests)</p>
-                </td>
-                <td className="p-4">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      res.status === 'CHECKED_IN'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : res.status === 'CONFIRMED'
-                        ? 'bg-amber-100 text-amber-800'
-                        : res.status === 'CHECKED_OUT'
-                        ? 'bg-zinc-100 text-zinc-600'
-                        : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {res.status.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="p-4 font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
-                <td className="p-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {res.status === 'CONFIRMED' && (
-                      <button
-                        onClick={() => onUpdateStatus(res.id, 'CHECKED_IN')}
-                        className="px-3 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
-                      >
-                        Check-In
-                      </button>
-                    )}
-                    {res.status === 'CHECKED_IN' && (
-                      <button
-                        onClick={() => onUpdateStatus(res.id, 'CHECKED_OUT')}
-                        className="px-3 py-1 bg-zinc-800 text-white rounded text-[11px] font-bold hover:bg-zinc-900 transition"
-                      >
-                        Check-Out
-                      </button>
-                    )}
-                    {res.status !== 'CANCELLED' && res.status !== 'CHECKED_OUT' && (
-                      <button
-                        onClick={() => onUpdateStatus(res.id, 'CANCELLED')}
-                        className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded text-[11px] font-bold transition"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDelete(res.id)}
-                      className="p-1 text-zinc-400 hover:text-rose-600 transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+        {filtered.length === 0 ? (
+          <p className="text-xs text-zinc-500 p-8 text-center">No reservations found matching your criteria.</p>
+        ) : (
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                <th className="p-4">Code</th>
+                <th className="p-4">Guest Details</th>
+                <th className="p-4">Room / Suite</th>
+                <th className="p-4">Stay Duration</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Total</th>
+                <th className="p-4 text-right">Workflow Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+              {filtered.map((res: Reservation) => (
+                <tr key={res.id} className="hover:bg-zinc-50/80 transition">
+                  <td className="p-4 font-mono font-bold text-amber-700">{res.code}</td>
+                  <td className="p-4">
+                    <p className="font-bold text-zinc-900">{res.clientName}</p>
+                    <p className="text-[11px] text-zinc-500">{res.clientEmail}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="font-bold text-zinc-900">Suite #{res.roomNumber}</p>
+                    <p className="text-[11px] text-zinc-500">{res.roomTitle}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="font-bold text-zinc-900">{res.checkInDate} → {res.checkOutDate}</p>
+                    <p className="text-[11px] text-zinc-500">{res.nightsCount} Nights ({res.guestsCount} Guests)</p>
+                  </td>
+                  <td className="p-4">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        res.status === 'CHECKED_IN'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : res.status === 'CONFIRMED'
+                          ? 'bg-amber-100 text-amber-800'
+                          : res.status === 'CHECKED_OUT'
+                          ? 'bg-zinc-100 text-zinc-600'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {res.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="p-4 font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
+                  <td className="p-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {(res.status === 'CONFIRMED' || res.status === 'PENDING') && (
+                        <button
+                          onClick={() => onUpdateStatus(res.id, 'CHECKED_IN')}
+                          className="px-3 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
+                        >
+                          Check-In
+                        </button>
+                      )}
+                      {res.status === 'CHECKED_IN' && (
+                        <button
+                          onClick={() => onUpdateStatus(res.id, 'CHECKED_OUT')}
+                          className="px-3 py-1 bg-zinc-800 text-white rounded text-[11px] font-bold hover:bg-zinc-900 transition"
+                        >
+                          Check-Out
+                        </button>
+                      )}
+                      {res.status !== 'CANCELLED' && res.status !== 'CHECKED_OUT' && (
+                        <button
+                          onClick={() => onUpdateStatus(res.id, 'CANCELLED')}
+                          className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded text-[11px] font-bold transition"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onDelete(res.id)}
+                        className="p-1 text-zinc-400 hover:text-rose-600 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
-function CustomersModule({ guests, searchQuery }: any) {
+function CustomersModule({ guests, searchQuery }: { guests: GuestProfile[]; searchQuery: string }) {
   const filtered = guests.filter((g: GuestProfile) => {
     const q = searchQuery?.trim().toLowerCase() || '';
     if (!q) return true;
@@ -643,31 +593,37 @@ function CustomersModule({ guests, searchQuery }: any) {
         <p className="text-xs text-zinc-500">Centralized database of hotel guests, contact information, and stay history</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filtered.map((g: GuestProfile) => (
-          <div key={g.id} className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-5">
-            <div className="w-12 h-12 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center font-bold text-base text-[#D4AF37] shrink-0">
-              {g.name.split(' ').map((n) => n[0]).join('')}
-            </div>
-            <div className="space-y-1 flex-1">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-sm text-zinc-900">{g.name}</h3>
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">{g.tier}</span>
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl p-12 text-center text-zinc-500 text-xs border border-zinc-200">
+          No guest profiles found matching your search.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filtered.map((g: GuestProfile) => (
+            <div key={g.id} className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-5">
+              <div className="w-12 h-12 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center font-bold text-base text-[#D4AF37] shrink-0">
+                {g.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
-              <p className="text-xs text-zinc-500">{g.email} • {g.phone}</p>
-              <div className="flex gap-4 pt-2 text-xs">
-                <span className="font-semibold text-zinc-700">Total Stays: <strong className="text-zinc-900">{g.totalStays}</strong></span>
-                <span className="font-semibold text-zinc-700">Total Spent: <strong className="text-amber-700">${g.totalSpent.toLocaleString()}</strong></span>
+              <div className="space-y-1 flex-1">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-sm text-zinc-900">{g.name}</h3>
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">{g.tier}</span>
+                </div>
+                <p className="text-xs text-zinc-500">{g.email} • {g.phone}</p>
+                <div className="flex gap-4 pt-2 text-xs">
+                  <span className="font-semibold text-zinc-700">Total Stays: <strong className="text-zinc-900">{g.totalStays}</strong></span>
+                  <span className="font-semibold text-zinc-700">Total Spent: <strong className="text-amber-700">${g.totalSpent.toLocaleString()}</strong></span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function UsersModule({ staff, searchQuery }: any) {
+function UsersModule({ staff, searchQuery }: { staff: StaffUser[]; searchQuery: string }) {
   const filtered = staff.filter((u: StaffUser) => {
     const q = searchQuery?.trim().toLowerCase() || '';
     if (!q) return true;
@@ -683,54 +639,74 @@ function UsersModule({ staff, searchQuery }: any) {
     <div className="p-8 space-y-6 max-w-7xl mx-auto font-sans">
       <div>
         <h2 className="text-xl font-bold text-zinc-900">Staff & Role Administration</h2>
-        <p className="text-xs text-zinc-500">User authorization levels and front-desk personnel</p>
+        <p className="text-xs text-zinc-500">User authorization levels and front-desk personnel loaded from database</p>
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-              <th className="p-4">Name</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">Department</th>
-              <th className="p-4">Role</th>
-              <th className="p-4">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-            {filtered.map((u: StaffUser) => (
-              <tr key={u.id} className="hover:bg-zinc-50/80 transition">
-                <td className="p-4 font-bold text-zinc-900">{u.name}</td>
-                <td className="p-4 text-zinc-500">{u.email}</td>
-                <td className="p-4 text-zinc-600">{u.department}</td>
-                <td className="p-4 font-bold text-amber-700">{u.role}</td>
-                <td className="p-4">
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold uppercase">
-                    {u.status}
-                  </span>
-                </td>
+        {filtered.length === 0 ? (
+          <p className="text-xs text-zinc-500 p-8 text-center">No user accounts found matching your query.</p>
+        ) : (
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                <th className="p-4">Name</th>
+                <th className="p-4">Email</th>
+                <th className="p-4">Department</th>
+                <th className="p-4">Role</th>
+                <th className="p-4">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+              {filtered.map((u: StaffUser) => (
+                <tr key={u.id} className="hover:bg-zinc-50/80 transition">
+                  <td className="p-4 font-bold text-zinc-900">{u.name}</td>
+                  <td className="p-4 text-zinc-500">{u.email}</td>
+                  <td className="p-4 text-zinc-600">{u.department}</td>
+                  <td className="p-4 font-bold text-amber-700">{u.role}</td>
+                  <td className="p-4">
+                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold uppercase">
+                      {u.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
-
 // ==========================================
 // MODAL FOR NEW RESERVATIONS
 // ==========================================
 
-function NewReservationModal({ isOpen, onClose, rooms, onCreate }: any) {
+function NewReservationModal({
+  isOpen,
+  onClose,
+  rooms,
+  onCreate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  rooms: Room[];
+  onCreate: (payload: any) => Promise<void>;
+}) {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState(rooms[0]?.id || '');
   const [checkInDate, setCheckInDate] = useState('2026-08-01');
   const [checkOutDate, setCheckOutDate] = useState('2026-08-05');
   const [guestsCount, setGuestsCount] = useState(2);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (rooms.length > 0 && !selectedRoomId) {
+      setSelectedRoomId(rooms[0].id);
+    }
+  }, [rooms, selectedRoomId]);
 
   if (!isOpen) return null;
 
@@ -746,30 +722,32 @@ function NewReservationModal({ isOpen, onClose, rooms, onCreate }: any) {
   const nights = calculateNights();
   const totalPrice = nights * (selectedRoom?.pricePerNight || 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (nights <= 0) {
       setErrorMsg('Check-out date must strictly occur after check-in date!');
       return;
     }
 
-    onCreate({
-      id: `res-${Date.now()}`,
-      code: `VEL-${Math.floor(8000 + Math.random() * 1000)}`,
-      clientName,
-      clientEmail: clientEmail || `${clientName.toLowerCase().replace(/\s+/g, '.')}@guest.com`,
-      roomNumber: selectedRoom.number,
-      roomTitle: selectedRoom.title,
-      checkInDate,
-      checkOutDate,
-      nightsCount: nights,
-      guestsCount,
-      grossValue: totalPrice,
-      status: 'CONFIRMED',
-      createdAt: new Date().toISOString().split('T')[0],
-    });
-
-    onClose();
+    setIsSubmitting(true);
+    setErrorMsg('');
+    try {
+      await onCreate({
+        guestName: clientName,
+        guestEmail: clientEmail || `${clientName.toLowerCase().replace(/\s+/g, '.')}@guest.com`,
+        roomId: selectedRoom?.id,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        guests: Number(guestsCount),
+        totalPrice,
+        status: 'confirmed',
+      });
+      onClose();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to create reservation');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -861,7 +839,7 @@ function NewReservationModal({ isOpen, onClose, rooms, onCreate }: any) {
           <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-lg flex justify-between items-center text-xs">
             <div>
               <p className="font-bold text-amber-900">Duration: {nights} Nights</p>
-              <p className="text-amber-700 font-medium">Rate: ${selectedRoom?.pricePerNight} / night</p>
+              <p className="text-amber-700 font-medium">Rate: ${selectedRoom?.pricePerNight || 0} / night</p>
             </div>
             <div className="text-right">
               <span className="text-[10px] font-bold text-amber-800 uppercase block">Total Price</span>
@@ -871,9 +849,17 @@ function NewReservationModal({ isOpen, onClose, rooms, onCreate }: any) {
 
           <button
             type="submit"
-            className="w-full py-3 bg-[#18181B] text-white font-bold rounded-lg text-xs hover:bg-zinc-800 transition uppercase tracking-wider"
+            disabled={isSubmitting}
+            className="w-full py-3 bg-[#18181B] text-white font-bold rounded-lg text-xs hover:bg-zinc-800 transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            Confirm Reservation
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-[#D4AF37]" />
+                <span>Creating Booking...</span>
+              </>
+            ) : (
+              <span>Confirm Reservation</span>
+            )}
           </button>
         </form>
       </div>
@@ -889,63 +875,214 @@ export function Admin() {
   const [activeSection, setActiveSection] = useState<NavSection>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
-  const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [guests, setGuests] = useState<GuestProfile[]>([]);
+  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyRevenueData[]>([]);
 
-  const [guests] = useState<GuestProfile[]>(INITIAL_GUESTS);
-  const [staff] = useState<StaffUser[]>(INITIAL_STAFF);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load persisted state only after hydration
-  useEffect(() => {
+  const fetchAdminData = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setIsRefreshing(true);
+    setError(null);
+
     try {
-      const savedRooms = localStorage.getItem('velora_rooms_v3');
-      if (savedRooms) {
-        setRooms(JSON.parse(savedRooms));
+      const [roomsRes, resesRes, usersRes, dashRes] = await Promise.all([
+        fetch('/api/rooms'),
+        fetch('/api/reservations'),
+        fetch('/api/users'),
+        fetch('/api/admin/dashboard'),
+      ]);
+
+      const [roomsData, resesData, usersData, dashData] = await Promise.all([
+        roomsRes.ok ? roomsRes.json() : [],
+        resesRes.ok ? resesRes.json() : [],
+        usersRes.ok ? usersRes.json() : [],
+        dashRes.ok ? dashRes.json() : null,
+      ]);
+
+      // 1. Map Rooms
+      const mappedRooms: Room[] = (Array.isArray(roomsData) ? roomsData : []).map((r: any) => ({
+        id: r._id,
+        number: r.roomNumber || '100',
+        title: r.roomTypeId?.name || `Suite #${r.roomNumber}`,
+        type: r.roomTypeId?.name || 'Standard Room',
+        floor: r.floor || 1,
+        pricePerNight: r.roomTypeId?.basePrice || 150,
+        maxGuests: r.roomTypeId?.capacity || 2,
+        status: (r.status || 'available').toUpperCase() as RoomStatus,
+        features: Array.isArray(r.roomTypeId?.amenities)
+          ? r.roomTypeId.amenities.map((a: any) => (typeof a === 'string' ? a : a.name || 'Amenity'))
+          : ['Free WiFi', 'Air Conditioning'],
+      }));
+
+      // 2. Map Reservations
+      const mappedReservations: Reservation[] = (Array.isArray(resesData) ? resesData : []).map((res: any) => {
+        const cIn = res.checkIn ? new Date(res.checkIn) : new Date();
+        const cOut = res.checkOut ? new Date(res.checkOut) : new Date();
+        const diffTime = Math.abs(cOut.getTime() - cIn.getTime());
+        const nightsCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+        const clientName = res.guestName || res.userId?.name || 'Walk-In Guest';
+        const clientEmail = res.guestEmail || res.userId?.email || 'guest@hotel.test';
+        const roomNumber = res.roomId?.roomNumber || 'N/A';
+        const roomTitle = res.roomId?.roomTypeId?.name || 'Deluxe Room';
+
+        return {
+          id: res._id,
+          code: `VEL-${res._id.slice(-4).toUpperCase()}`,
+          clientName,
+          clientEmail,
+          roomNumber,
+          roomTitle,
+          checkInDate: cIn.toISOString().split('T')[0],
+          checkOutDate: cOut.toISOString().split('T')[0],
+          nightsCount,
+          guestsCount: res.guests || 1,
+          grossValue: res.totalPrice || 0,
+          status: (res.status || 'confirmed').toUpperCase() as ReservationStatus,
+          createdAt: res.createdAt ? new Date(res.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          roomId: res.roomId?._id || res.roomId,
+        };
+      });
+
+      // 3. Map Guests & Staff Users
+      const rawUsers = Array.isArray(usersData) ? usersData : [];
+      const mappedStaff: StaffUser[] = rawUsers
+        .filter((u: any) => u.role !== 'guest')
+        .map((u: any) => ({
+          id: u._id,
+          name: u.name || 'Staff User',
+          email: u.email,
+          role: (u.role || 'receptionist').toUpperCase() as StaffUser['role'],
+          department: u.role === 'admin' ? 'Executive Management' : 'Front Desk',
+          status: 'ACTIVE',
+        }));
+
+      // Calculate Guest Profiles from users & reservation history
+      const guestMap = new Map<string, GuestProfile>();
+      
+      // Process registered guests
+      rawUsers.forEach((u: any) => {
+        if (u.role === 'guest' || !u.role) {
+          guestMap.set(u.email, {
+            id: u._id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone || 'N/A',
+            tier: 'STANDARD',
+            totalStays: 0,
+            totalSpent: 0,
+          });
+        }
+      });
+
+      // Aggregate stay stats from reservations
+      mappedReservations.forEach((res) => {
+        const key = res.clientEmail;
+        if (!guestMap.has(key)) {
+          guestMap.set(key, {
+            id: `guest-${res.id}`,
+            name: res.clientName,
+            email: res.clientEmail,
+            phone: 'N/A',
+            tier: 'STANDARD',
+            totalStays: 0,
+            totalSpent: 0,
+          });
+        }
+        const g = guestMap.get(key)!;
+        g.totalStays += 1;
+        if (res.status !== 'CANCELLED') {
+          g.totalSpent += res.grossValue;
+        }
+
+        if (g.totalSpent >= 10000) g.tier = 'ROYAL';
+        else if (g.totalSpent >= 5000) g.tier = 'PLATINUM';
+        else if (g.totalSpent >= 2000) g.tier = 'VIP';
+        else g.tier = 'STANDARD';
+      });
+
+      setRooms(mappedRooms);
+      setReservations(mappedReservations);
+      setStaff(mappedStaff);
+      setGuests(Array.from(guestMap.values()));
+
+      if (dashData?.monthlyData) {
+        setMonthlyData(dashData.monthlyData);
       }
-      const savedRes = localStorage.getItem('velora_reservations_v3');
-      if (savedRes) {
-        setReservations(JSON.parse(savedRes));
-      }
-    } catch (e) {
-      console.error(e);
+    } catch (err: any) {
+      console.error('Failed to load admin data:', err);
+      setError('Could not connect to backend database.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
-    setIsLoaded(true);
   }, []);
 
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('velora_rooms_v3', JSON.stringify(rooms));
+    fetchAdminData();
+  }, [fetchAdminData]);
+
+  const handleUpdateRoomStatus = async (roomId: string, status: RoomStatus) => {
+    try {
+      const res = await fetch(`/api/rooms/${roomId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status.toLowerCase() }),
+      });
+      if (!res.ok) throw new Error('Failed to update room status');
+      setToastMessage(`Room status updated to ${status}`);
+      await fetchAdminData();
+    } catch (err: any) {
+      setToastMessage(`Error: ${err.message}`);
     }
-  }, [rooms, isLoaded]);
+  };
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('velora_reservations_v3', JSON.stringify(reservations));
+  const handleUpdateReservationStatus = async (resId: string, status: ReservationStatus) => {
+    try {
+      const res = await fetch(`/api/reservations/${resId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status.toLowerCase() }),
+      });
+      if (!res.ok) throw new Error('Failed to update reservation');
+      setToastMessage(`Reservation status updated to ${status}`);
+      await fetchAdminData();
+    } catch (err: any) {
+      setToastMessage(`Error: ${err.message}`);
     }
-  }, [reservations, isLoaded]);
-
-  const handleUpdateRoomStatus = (roomId: string, status: RoomStatus) => {
-    setRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, status } : r)));
-    setToastMessage(`Room status updated to ${status}`);
   };
 
-  const handleUpdateReservationStatus = (resId: string, status: Reservation['status']) => {
-    setReservations((prev) => prev.map((r) => (r.id === resId ? { ...r, status } : r)));
-    setToastMessage(`Reservation status updated to ${status}`);
+  const handleDeleteReservation = async (resId: string) => {
+    try {
+      const res = await fetch(`/api/reservations/${resId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete reservation');
+      setToastMessage('Reservation record deleted from database.');
+      await fetchAdminData();
+    } catch (err: any) {
+      setToastMessage(`Error: ${err.message}`);
+    }
   };
 
-  const handleDeleteReservation = (resId: string) => {
-    setReservations((prev) => prev.filter((r) => r.id !== resId));
-    setToastMessage('Reservation record deleted.');
-  };
-
-  const handleCreateReservation = (newRes: Reservation) => {
-    setReservations((prev) => [newRes, ...prev]);
-    setToastMessage(`Created new booking ${newRes.code}`);
+  const handleCreateReservation = async (payload: any) => {
+    const res = await fetch('/api/reservations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to create booking');
+    }
+    setToastMessage('Created new reservation in database!');
+    await fetchAdminData();
   };
 
   return (
@@ -953,40 +1090,95 @@ export function Admin() {
       <Sidebar activeSection={activeSection} onSelectSection={setActiveSection} />
 
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top Navigation Bar */}
+        <header className="bg-white border-b border-zinc-200 px-8 py-4 flex items-center justify-between gap-4 sticky top-0 z-10 shadow-xs">
+          <div className="flex items-center gap-3 bg-zinc-100 px-3.5 py-2 rounded-lg border border-zinc-200 w-72">
+            <Search className="w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search rooms, guests, bookings..."
+              className="bg-transparent text-xs text-zinc-800 focus:outline-none w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Backend Connected (MongoDB)</span>
+            </div>
+
+            <button
+              onClick={() => fetchAdminData(true)}
+              disabled={isRefreshing}
+              className="p-2 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition flex items-center gap-1.5 text-xs font-bold"
+              title="Refresh Data"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#D4AF37]' : ''}`} />
+              <span className="hidden sm:inline">Sync Data</span>
+            </button>
+          </div>
+        </header>
+
         <main className="flex-1 overflow-y-auto pb-12">
-          {activeSection === 'OVERVIEW' && (
-            <OverviewModule
-              rooms={rooms}
-              reservations={reservations}
-              onOpenNewReservation={() => setIsModalOpen(true)}
-              onNavigate={setActiveSection}
-            />
-          )}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-500 text-xs">
+              <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
+              <p className="font-semibold">Fetching Live Admin Dashboard Data from Backend...</p>
+            </div>
+          ) : error ? (
+            <div className="m-8 p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs space-y-3">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+                <span>Backend Connection Error</span>
+              </div>
+              <p>{error}</p>
+              <button
+                onClick={() => fetchAdminData(true)}
+                className="px-4 py-2 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 transition"
+              >
+                Retry Connection
+              </button>
+            </div>
+          ) : (
+            <>
+              {activeSection === 'OVERVIEW' && (
+                <OverviewModule
+                  rooms={rooms}
+                  reservations={reservations}
+                  monthlyData={monthlyData}
+                  onOpenNewReservation={() => setIsModalOpen(true)}
+                  onNavigate={setActiveSection}
+                />
+              )}
 
-          {activeSection === 'ROOMS' && (
-            <RoomsModule
-              rooms={rooms}
-              onUpdateStatus={handleUpdateRoomStatus}
-              searchQuery={searchQuery}
-            />
-          )}
+              {activeSection === 'ROOMS' && (
+                <RoomsModule
+                  rooms={rooms}
+                  onUpdateStatus={handleUpdateRoomStatus}
+                  searchQuery={searchQuery}
+                />
+              )}
 
-          {activeSection === 'RESERVATIONS' && (
-            <ReservationsModule
-              reservations={reservations}
-              onUpdateStatus={handleUpdateReservationStatus}
-              onDelete={handleDeleteReservation}
-              onOpenNew={() => setIsModalOpen(true)}
-              searchQuery={searchQuery}
-            />
-          )}
+              {activeSection === 'RESERVATIONS' && (
+                <ReservationsModule
+                  reservations={reservations}
+                  onUpdateStatus={handleUpdateReservationStatus}
+                  onDelete={handleDeleteReservation}
+                  onOpenNew={() => setIsModalOpen(true)}
+                  searchQuery={searchQuery}
+                />
+              )}
 
-          {activeSection === 'CUSTOMERS' && (
-            <CustomersModule guests={guests} searchQuery={searchQuery} />
-          )}
+              {activeSection === 'CUSTOMERS' && (
+                <CustomersModule guests={guests} searchQuery={searchQuery} />
+              )}
 
-          {activeSection === 'USERS' && (
-            <UsersModule staff={staff} searchQuery={searchQuery} />
+              {activeSection === 'USERS' && (
+                <UsersModule staff={staff} searchQuery={searchQuery} />
+              )}
+            </>
           )}
         </main>
       </div>
@@ -999,7 +1191,7 @@ export function Admin() {
       />
 
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#18181B] text-white px-4 py-3 rounded-lg shadow-xl border border-zinc-700 flex items-center gap-3 text-xs font-semibold">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#18181B] text-white px-4 py-3 rounded-lg shadow-xl border border-zinc-700 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
           <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />
           <span>{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="ml-2 text-zinc-400 hover:text-white">

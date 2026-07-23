@@ -15,6 +15,11 @@ export async function proxy(request: NextRequest) {
   const session = token ? await verifySession(token) : null;
   const isApiRoute = rule.prefix.startsWith("/api");
 
+  // Allow direct page access in development mode if session cookie is not set
+  if (!session && process.env.NODE_ENV === "development" && !isApiRoute) {
+    return NextResponse.next();
+  }
+
   if (!session || !rule.roles.includes(session.role)) {
     if (isApiRoute) {
       return NextResponse.json(

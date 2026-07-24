@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Velora | Luxury Hotel & Resort",
@@ -15,9 +15,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="bg-stone-50 font-sans text-neutral-900 antialiased selection:bg-amber-200">
-        
-        {children}
-     
+        <Providers>{children}</Providers>
       </body>
     </html>
-  );}
+  );
+}

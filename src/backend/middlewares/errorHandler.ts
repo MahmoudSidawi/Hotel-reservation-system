@@ -31,7 +31,7 @@ export function jsonError(error: unknown) {
   }
 
   if (error instanceof Error && error.name === "MongoServerError" && "code" in error && (error as { code?: number }).code === 11000) {
-    return NextResponse.json({ error: "Duplicate value violates a unique constraint" }, { status: 409 });
+    return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
   }
 
   if (error instanceof Error && (error.name === "MongooseServerSelectionError" || error.message.includes("ECONNREFUSED"))) {
@@ -41,6 +41,6 @@ export function jsonError(error: unknown) {
     );
   }
 
-  console.error(error);
+  console.error("Unhandled API Error:", error);
   return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 }

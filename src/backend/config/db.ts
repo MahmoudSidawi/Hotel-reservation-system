@@ -1,22 +1,15 @@
 import dns from "dns";
 import mongoose from "mongoose";
-// Side-effect import: registers every model's schema on this mongoose
-// instance, regardless of which specific model file the calling controller
-// imported. Without this, populate("someRef") can throw MissingSchemaError
-// if that ref's model was never imported anywhere in the current route's
-// module graph (e.g. RoomType populating "Amenity" when only RoomType was imported).
+// Side-effect import: registers every model's schema on this mongoose instance
 import "@/backend/models";
 
-// The local DNS resolver (often 127.0.0.1 behind a VPN/proxy) can refuse SRV
-// queries needed for mongodb+srv:// URIs. Fall back to a public resolver for
-// Node's own lookups without touching OS-wide DNS settings.
-dns.setServers(["8.8.8.8", "1.1.1.1", ...dns.getServers()]);
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1", ...dns.getServers()]);
+} catch {
+  // Ignore DNS setServers errors on restricted environments
+}
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/hotel_db";
-
-if (!MONGODB_URI) {
-  throw new Error("Missing MONGODB_URI environment variable");
-}
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -32,12 +25,13 @@ const cache: MongooseCache = global._mongooseCache ?? { conn: null, promise: nul
 global._mongooseCache = cache;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
-  if (cache.conn) {
+  if (cache.conn && mongoose.connection.readyState === 1) {
     return cache.conn;
   }
 
   if (!cache.promise) {
-    cache.promise = mongoose.connect(MONGODB_URI as string, {
+    cache.promise = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
       bufferCommands: false,
     });
   }

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import { useAuth } from "@/context/AuthContext";
 
 function LoginForm() {
   const router = useRouter();
@@ -20,12 +21,15 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const { refreshUser } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
+      console.log("[LoginPage] Submitting login request for:", email);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,6 +41,9 @@ function LoginForm() {
         throw new Error(data.error ?? "Sign in failed");
       }
 
+      console.log("[LoginPage] Login response success:", data.user);
+      await refreshUser();
+
       // Check role or callbackUrl
       let destination = "/";
       if (data.user.role === "admin") {
@@ -44,13 +51,14 @@ function LoginForm() {
       } else if (data.user.role === "receptionist") {
         destination = "/receptionist";
       } else {
-        // Regular guest: redirect back to the selected room page if callbackUrl exists
         destination = callbackUrl ?? "/";
       }
 
+      console.log("[LoginPage] Redirecting to:", destination);
       router.push(destination);
       router.refresh();
     } catch (err) {
+      console.error("[LoginPage] Login error:", err);
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
       setLoading(false);

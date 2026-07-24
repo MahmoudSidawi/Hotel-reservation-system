@@ -2,21 +2,20 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, loading, logout } = useAuth();
 
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     setMobileMenuOpen(false);
 
-    // Look for element with id="contact" on the current page
     const contactElement = document.getElementById("contact");
-
     if (contactElement) {
       contactElement.scrollIntoView({ behavior: "smooth" });
     } else {
-      // Fallback: scroll to the bottom of the current page where footer/contact sits
       window.scrollTo({
         top: document.body.scrollHeight,
         behavior: "smooth",
@@ -37,31 +36,54 @@ export default function Navbar() {
 
         {/* Desktop Nav Links */}
         <nav className="hidden md:flex items-center gap-8 text-sm tracking-wide text-neutral-300">
-          <Link href="/rooms" className="hover:text-white transition-colors">
-            Rooms
-          </Link>
-          <Link href="/#amenities" className="hover:text-white transition-colors">
-            Amenities
-          </Link>
-          <Link href="/#stories" className="hover:text-white transition-colors">
-            Stories
-          </Link>
-          <a
-            href="#contact"
-            onClick={handleContactClick}
-            className="hover:text-white transition-colors cursor-pointer"
-          >
+          <Link href="/rooms" className="hover:text-white transition-colors">Rooms</Link>
+          <Link href="/#amenities" className="hover:text-white transition-colors">Amenities</Link>
+          <Link href="/#gallery" className="hover:text-white transition-colors">Gallery</Link>
+          <Link href="/#stories" className="hover:text-white transition-colors">Stories</Link>
+          <a href="#contact" onClick={handleContactClick} className="hover:text-white transition-colors cursor-pointer">
             Contact
           </a>
+          {user?.role === "admin" && (
+            <Link href="/admin" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
+              Admin Dashboard
+            </Link>
+          )}
+          {user?.role === "receptionist" && (
+            <Link href="/receptionist" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
+              Receptionist Portal
+            </Link>
+          )}
         </nav>
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-4">
-          <Link 
-            href="/login" 
-            className="text-sm font-medium hover:text-white px-3 py-2 transition-colors"
+          {loading ? (
+            <span className="text-xs text-neutral-400">Loading...</span>
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-neutral-300">
+                Hi, <strong className="text-white">{user.name}</strong>
+              </span>
+              <button
+                onClick={logout}
+                className="text-xs bg-stone-800 hover:bg-stone-700 border border-stone-600 px-3 py-1.5 text-neutral-200 transition-colors cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link 
+              href="/login" 
+              className="text-sm font-medium hover:text-white px-3 py-2 transition-colors"
+            >
+              Login
+            </Link>
+          )}
+          <Link
+            href="/#book"
+            className="border border-neutral-400 px-5 py-2.5 text-xs tracking-widest uppercase text-white hover:bg-white hover:text-black transition-all"
           >
-            Login
+            Home
           </Link>
         </div>
 
@@ -74,7 +96,7 @@ export default function Navbar() {
             {mobileMenuOpen ? (
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 18h16M4 18h16" />
             )}
           </svg>
         </button>
@@ -83,26 +105,27 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-6 py-4 flex flex-col gap-4 text-sm">
-          <Link href="/rooms" onClick={() => setMobileMenuOpen(false)}>
-            Rooms
-          </Link>
-          <Link href="/#amenities" onClick={() => setMobileMenuOpen(false)}>
-            Amenities
-          </Link>
-          <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>
-            Stories
-          </Link>
-          <a
-            href="#contact"
-            onClick={handleContactClick}
-            className="cursor-pointer"
-          >
-            Contact
-          </a>
+          <Link href="/rooms" onClick={() => setMobileMenuOpen(false)}>Rooms</Link>
+          <Link href="/#amenities" onClick={() => setMobileMenuOpen(false)}>Amenities</Link>
+          <Link href="/#gallery" onClick={() => setMobileMenuOpen(false)}>Gallery</Link>
+          <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>Stories</Link>
+          <a href="#contact" onClick={handleContactClick} className="cursor-pointer">Contact</a>
+          {user?.role === "admin" && (
+            <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">Admin Dashboard</Link>
+          )}
+          {user?.role === "receptionist" && (
+            <Link href="/receptionist" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">Receptionist Portal</Link>
+          )}
           <hr className="border-neutral-800 my-1" />
-          <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-amber-200 font-medium">
-            Login
-          </Link>
+          {user ? (
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-neutral-300">Hi, {user.name}</span>
+              <button onClick={() => { setMobileMenuOpen(false); logout(); }} className="text-xs text-amber-200 font-medium">Logout</button>
+            </div>
+          ) : (
+            <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-amber-200 font-medium">Login</Link>
+          )}
+          <Link href="/#book" onClick={() => setMobileMenuOpen(false)} className="text-center border border-white py-2 uppercase text-xs">Book Now</Link>
         </div>
       )}
     </header>

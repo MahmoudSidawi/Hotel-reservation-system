@@ -38,7 +38,6 @@ export type NavSection =
   | 'OVERVIEW'
   | 'ROOMS'
   | 'RESERVATIONS'
-  | 'CUSTOMERS'
   | 'USERS';
 
 export type ReservationStatus = 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'PENDING';
@@ -108,7 +107,6 @@ function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection
     { label: 'OVERVIEW', icon: LayoutDashboard },
     { label: 'ROOMS', icon: BedDouble },
     { label: 'RESERVATIONS', icon: CalendarCheck },
-    { label: 'CUSTOMERS', icon: Users },
     { label: 'USERS', icon: ShieldCheck },
   ];
 
@@ -1169,10 +1167,6 @@ export function Admin() {
                   onOpenNew={() => setIsModalOpen(true)}
                   searchQuery={searchQuery}
                 />
-              )}
-
-              {activeSection === 'CUSTOMERS' && (
-                <CustomersModule guests={guests} searchQuery={searchQuery} />
               )}
 
               {activeSection === 'USERS' && (

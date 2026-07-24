@@ -8,7 +8,8 @@ import type { LoginInput } from "@/backend/validators/auth";
 export async function login({ email, password }: LoginInput) {
   await connectToDatabase();
 
-  const user = await User.findOne({ email });
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail });
   if (!user) throw new UnauthorizedError("Invalid email or password");
 
   const validPassword = await bcrypt.compare(password, user.password);

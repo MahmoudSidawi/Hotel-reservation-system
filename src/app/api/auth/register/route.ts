@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import connectDB from "../../../../backend/config/db"; // Adjust path if your db file is in src/lib/db
-import User from "../../../../backend/models/User";
+import connectToDatabase from "@/backend/config/db";
+import User from "@/backend/models/User";
+import { jsonError } from "@/backend/middlewares/errorHandler";
 
 export async function POST(req: Request) {
   try {
@@ -14,10 +15,12 @@ export async function POST(req: Request) {
       );
     }
 
-    await connectDB();
+    await connectToDatabase();
+
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return NextResponse.json(
         { error: "An account with this email already exists." },
@@ -28,10 +31,10 @@ export async function POST(req: Request) {
     // Hash password with bcrypt (10 salt rounds)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Save to database matching your exact schema structure
+    // Save to database matching exact schema structure
     const newUser = await User.create({
       name: fullName,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword,
       role: "guest",
       phone: phone || undefined,
@@ -41,7 +44,7 @@ export async function POST(req: Request) {
       {
         message: "User registered successfully",
         user: {
-          id: newUser._id,
+          id: String(newUser._id),
           name: newUser.name,
           email: newUser.email,
           phone: newUser.phone,
@@ -51,10 +54,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Registration error:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return jsonError(error);
   }
 }

@@ -246,31 +246,43 @@ export default function RoomDetailPage() {
 
   useEffect(() => {
     if (!roomTypeId) return;
+    let cancelled = false;
     const controller = new AbortController();
+
+    setLoading(true);
+    setNotFound(false);
+    setRoomType(null);
 
     fetch(`/api/room-types/${roomTypeId}`, { signal: controller.signal })
       .then(async (res) => {
         if (res.status === 404) {
-          setNotFound(true);
+          if (!cancelled) setNotFound(true);
           return null;
         }
         if (!res.ok) throw new Error('Failed to load room');
         return res.json();
       })
       .then((data: ApiRoomType | null) => {
-        if (data) setRoomType(data);
+        if (!cancelled && data) setRoomType(data);
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') setNotFound(true);
+        if (!cancelled && err.name !== 'AbortError') setNotFound(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     fetch(`/api/room-images?roomTypeId=${roomTypeId}`, { signal: controller.signal })
       .then((res) => res.json())
-      .then((data) => setImages(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (!cancelled) setImages(Array.isArray(data) ? data : []);
+      })
       .catch(() => {});
 
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [roomTypeId]);
 
   useEffect(() => {

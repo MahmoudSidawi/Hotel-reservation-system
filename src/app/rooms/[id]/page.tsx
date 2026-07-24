@@ -1,37 +1,82 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Users, BedDouble, Star, Calendar,
-  Maximize2, Info, CheckCircle2, CreditCard, X, CheckCircle
+  ArrowLeft, Users, BedDouble, Calendar,
+  Info, CheckCircle2, CreditCard, X, CheckCircle, Loader2
 } from 'lucide-react';
-import { VELORA_ROOMS, getAmenityIcon, type VeloraRoom, type BookingDetails } from '@/lib/rooms-data';
+import {
+  ApiRoomType, ApiRoomImage, getAmenityIcon, fallbackImageFor, type BookingDetails,
+} from '@/lib/rooms-data';
+
+type CurrentUser = { id: string; name: string; email: string; role: string };
 
 // ============================================================================
 // BOOKING MODAL
 // ============================================================================
 function BookingModal({
-  room,
+  roomType,
+  roomTypeId,
+  user,
   bookingDetails,
   onClose,
 }: {
-  room: VeloraRoom;
+  roomType: ApiRoomType;
+  roomTypeId: string;
+  user: CurrentUser;
   bookingDetails: BookingDetails;
   onClose: () => void;
 }) {
-  const [guestName, setGuestName]             = useState('');
-  const [guestEmail, setGuestEmail]           = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
-  const [isConfirmed, setIsConfirmed]         = useState(false);
-  const [resCode, setResCode]                 = useState('');
+  const [submitting, setSubmitting]           = useState(false);
+  const [submitError, setSubmitError]         = useState<string | null>(null);
+  const [confirmation, setConfirmation]       = useState<{ id: string } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = 'RES-' + Math.floor(1000 + Math.random() * 9000);
-    setResCode(code);
-    setIsConfirmed(true);
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const params = new URLSearchParams({
+        checkIn: bookingDetails.checkIn,
+        checkOut: bookingDetails.checkOut,
+        roomTypeId,
+      });
+      const availableRes = await fetch(`/api/rooms/available?${params.toString()}`);
+      const availableRooms = await availableRes.json();
+      if (!availableRes.ok) {
+        throw new Error(availableRooms.error ?? 'Failed to check room availability');
+      }
+      if (!Array.isArray(availableRooms) || availableRooms.length === 0) {
+        throw new Error('No rooms of this type are available for the selected dates anymore.');
+      }
+      const roomId = availableRooms[0]._id as string;
+
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          roomId,
+          checkIn: bookingDetails.checkIn,
+          checkOut: bookingDetails.checkOut,
+          guests: bookingDetails.guests,
+          totalPrice: bookingDetails.total,
+          specialRequests: specialRequests || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Reservation failed');
+
+      setConfirmation({ id: String(data._id) });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Reservation failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -43,7 +88,7 @@ function BookingModal({
               VELORA LUXURY RESORT
             </span>
             <h3 className="font-serif text-xl font-normal text-white mt-1">
-              {isConfirmed ? 'Reservation Confirmed' : 'Complete Your Reservation'}
+              {confirmation ? 'Reservation Confirmed' : 'Complete Your Reservation'}
             </h3>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-colors">
@@ -51,26 +96,26 @@ function BookingModal({
           </button>
         </div>
 
-        {isConfirmed ? (
+        {confirmation ? (
           <div className="p-8 text-center space-y-6">
             <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-700">
               <CheckCircle className="w-8 h-8" />
             </div>
             <div className="space-y-2">
               <h4 className="font-serif text-2xl font-normal text-[#1A1918]">
-                We look forward to welcoming you, {guestName}!
+                We look forward to welcoming you, {user.name}!
               </h4>
               <p className="text-xs text-[#6E6B65]">
                 Your booking reference is{' '}
                 <span className="font-mono font-bold text-[#1A1918] bg-[#EAE2D5] px-2 py-0.5 rounded">
-                  {resCode}
+                  {confirmation.id}
                 </span>
               </p>
             </div>
             <div className="bg-white p-4 rounded-lg border border-[#E2DDD5] text-left text-xs space-y-2 text-[#5C5954]">
               <div className="flex justify-between border-b border-[#F2EEE8] pb-2">
                 <span className="font-semibold text-[#1A1918]">Accommodation</span>
-                <span>{room.title}</span>
+                <span>{roomType.name}</span>
               </div>
               <div className="flex justify-between border-b border-[#F2EEE8] pb-2">
                 <span className="font-semibold text-[#1A1918]">Dates</span>
@@ -86,22 +131,29 @@ function BookingModal({
               </div>
             </div>
             <p className="text-[11px] text-[#8C8880]">
-              A confirmation email has been dispatched to{' '}
-              <span className="font-medium text-[#1A1918]">{guestEmail}</span>.
+              A confirmation has been recorded under{' '}
+              <span className="font-medium text-[#1A1918]">{user.email}</span>.
             </p>
-            <button
-              onClick={onClose}
-              className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors"
-            >
-              Return to Rooms
-            </button>
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/reservations"
+                className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors"
+              >
+                View My Reservations
+              </Link>
+              <button
+                onClick={onClose}
+                className="w-full bg-white hover:bg-[#F2ECE1] border border-[#E2DDD5] text-[#1A1918] text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors"
+              >
+                Return to Room
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs">
             <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-[#E2DDD5]">
-              <img src={room.heroImage} alt={room.title} className="w-16 h-16 object-cover rounded" />
               <div className="space-y-1">
-                <h4 className="font-serif text-base font-semibold text-[#1A1918]">{room.title}</h4>
+                <h4 className="font-serif text-base font-semibold text-[#1A1918]">{roomType.name}</h4>
                 <div className="flex items-center gap-3 text-[11px] text-[#6E6B65]">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-[#A08149]" />
@@ -117,24 +169,10 @@ function BookingModal({
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">FULL NAME</label>
-                <input
-                  type="text" required
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="Eleanor Vance"
-                  className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">EMAIL ADDRESS</label>
-                <input
-                  type="email" required
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
-                  placeholder="e.vance@example.com"
-                  className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
-                />
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">BOOKING UNDER</label>
+                <div className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918]">
+                  {user.name} ({user.email})
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">SPECIAL REQUESTS (OPTIONAL)</label>
@@ -151,12 +189,22 @@ function BookingModal({
               <span className="font-semibold text-[#1A1918]">Total Payable Due at Check-In:</span>
               <span className="font-serif text-lg font-bold text-[#1A1918]">${bookingDetails.total}</span>
             </div>
+            {submitError && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
+                {submitError}
+              </p>
+            )}
             <button
               type="submit"
-              className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md flex items-center justify-center gap-2"
+              disabled={submitting}
+              className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <CreditCard className="w-4 h-4 text-[#C5A46D]" />
-              <span>CONFIRM RESERVATION</span>
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CreditCard className="w-4 h-4 text-[#C5A46D]" />
+              )}
+              <span>{submitting ? 'CONFIRMING...' : 'CONFIRM RESERVATION'}</span>
             </button>
           </form>
         )}
@@ -171,39 +219,114 @@ function BookingModal({
 export default function RoomDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const roomId = params?.id as string;
-  const room   = VELORA_ROOMS.find((r) => r.id === roomId) ?? VELORA_ROOMS[0];
+  const roomTypeId = params?.id as string;
 
-  // Set to false to simulate unauthenticated user state
-  const [isLoggedIn]                          = useState(false);
-  const [checkInDate, setCheckInDate]         = useState('2026-10-24');
-  const [checkOutDate, setCheckOutDate]       = useState('2026-10-27');
+  const [roomType, setRoomType]   = useState<ApiRoomType | null>(null);
+  const [images, setImages]       = useState<ApiRoomImage[]>([]);
+  const [user, setUser]           = useState<CurrentUser | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [notFound, setNotFound]   = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const [checkInDate, setCheckInDate] = useState(() => {
+    const inDate = new Date();
+    inDate.setDate(inDate.getDate() + 7);
+    return inDate.toISOString().slice(0, 10);
+  });
+  const [checkOutDate, setCheckOutDate] = useState(() => {
+    const outDate = new Date();
+    outDate.setDate(outDate.getDate() + 10);
+    return outDate.toISOString().slice(0, 10);
+  });
   const [guestsCount, setGuestsCount]         = useState(2);
   const [activePhotoModal, setActivePhotoModal] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen]         = useState(false);
   const [modalDetails, setModalDetails]       = useState<BookingDetails | null>(null);
+  const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!roomTypeId) return;
+    const controller = new AbortController();
+
+    fetch(`/api/room-types/${roomTypeId}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (res.status === 404) {
+          setNotFound(true);
+          return null;
+        }
+        if (!res.ok) throw new Error('Failed to load room');
+        return res.json();
+      })
+      .then((data: ApiRoomType | null) => {
+        if (data) setRoomType(data);
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') setNotFound(true);
+      })
+      .finally(() => setLoading(false));
+
+    fetch(`/api/room-images?roomTypeId=${roomTypeId}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => setImages(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [roomTypeId]);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.user as CurrentUser;
+      })
+      .then((currentUser) => setUser(currentUser ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  const galleryImages = useMemo(() => {
+    if (images.length === 0) return [fallbackImageFor(roomTypeId ?? 'room')];
+    const sorted = [...images].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    return sorted.map((img) => img.imageUrl);
+  }, [images, roomTypeId]);
+
+  const heroImage = galleryImages[0];
 
   const calculateNights = (): number => {
-    try {
-      const d1 = new Date(checkInDate);
-      const d2 = new Date(checkOutDate);
-      const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-      return diff > 0 ? diff : 1;
-    } catch { return 3; }
+    if (!checkInDate || !checkOutDate) return 0;
+    const d1 = new Date(checkInDate);
+    const d2 = new Date(checkOutDate);
+    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
   };
 
   const nightsCount  = calculateNights();
-  const roomSubtotal = room.pricePerNight * nightsCount;
-  const serviceFee   = 120;
+  const roomSubtotal = (roomType?.basePrice ?? 0) * nightsCount;
+  const serviceFee   = roomType ? 120 : 0;
   const grandTotal   = roomSubtotal + serviceFee;
 
-  // DIRECT REDIRECT LOGIC ON RESERVE BUTTON CLICK
-  const handleReserve = () => {
-    if (!isLoggedIn) {
-      // Save current room path (e.g., /rooms/deluxe-suite)
-      const targetRoomUrl = encodeURIComponent(`/rooms/${room.id}`);
-      // Redirect straight to login with target room attached
+  const handleReserve = async () => {
+    if (!roomType) return;
+    setAvailabilityNotice(null);
+
+    if (!authChecked) return;
+    if (!user) {
+      const targetRoomUrl = encodeURIComponent(`/rooms/${roomTypeId}`);
       router.push(`/login?callbackUrl=${targetRoomUrl}`);
+      return;
+    }
+
+    if (nightsCount <= 0) {
+      setAvailabilityNotice('Please select a valid check-in and check-out date.');
+      return;
+    }
+
+    const params = new URLSearchParams({ checkIn: checkInDate, checkOut: checkOutDate, roomTypeId });
+    const res = await fetch(`/api/rooms/available?${params.toString()}`);
+    const rooms = await res.json();
+    if (!res.ok || !Array.isArray(rooms) || rooms.length === 0) {
+      setAvailabilityNotice('No rooms of this type are available for those dates. Try different dates.');
       return;
     }
 
@@ -216,6 +339,27 @@ export default function RoomDetailPage() {
     });
     setIsModalOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="bg-[#FAF8F5] min-h-screen flex items-center justify-center gap-2 text-xs text-[#8C8880]">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>Loading room...</span>
+      </div>
+    );
+  }
+
+  if (notFound || !roomType) {
+    return (
+      <div className="bg-[#FAF8F5] min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
+        <h1 className="font-serif text-2xl text-[#1A1918]">Room not found</h1>
+        <p className="text-xs text-[#736F68]">This room may no longer be available.</p>
+        <Link href="/rooms" className="text-xs font-bold uppercase tracking-widest text-[#A08149] hover:underline">
+          Back to Our Rooms
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased">
@@ -234,23 +378,20 @@ export default function RoomDetailPage() {
       <section
         className="relative h-[380px] md:h-[480px] bg-cover bg-center flex items-end justify-start p-6 md:p-16 overflow-hidden"
         style={{
-          backgroundImage: `linear-gradient(to top, rgba(15,15,15,0.85), rgba(15,15,15,0.3)), url('${room.heroImage}')`
+          backgroundImage: `linear-gradient(to top, rgba(15,15,15,0.85), rgba(15,15,15,0.3)), url('${heroImage}')`
         }}
       >
         <div className="max-w-4xl space-y-3 z-10 text-white">
-          <span className="bg-[#C5A46D] text-[#1A1918] text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded inline-block">
-            {room.badge}
-          </span>
-          <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl font-normal tracking-tight">{room.title}</h1>
+          <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl font-normal tracking-tight">{roomType.name}</h1>
           <div className="flex flex-wrap items-center gap-6 text-xs text-[#E5DFD5] font-light">
             <span className="flex items-center gap-1.5">
               <Users className="w-4 h-4 text-[#C5A46D]" />
-              Up to {room.guestsMax} Guests
+              Up to {roomType.capacity} Guests
             </span>
             <span className="text-[#C5A46D]">•</span>
             <span className="flex items-center gap-1.5">
               <BedDouble className="w-4 h-4 text-[#C5A46D]" />
-              {room.bedDetails}
+              ${roomType.basePrice} / night
             </span>
           </div>
         </div>
@@ -265,68 +406,62 @@ export default function RoomDetailPage() {
               <h2 className="font-serif text-2xl md:text-3xl font-normal text-[#1A1918]">
                 A Sanctuary of Timeless Elegance
               </h2>
-              <div className="space-y-4 text-xs md:text-sm text-[#5C5954] leading-relaxed font-light">
-                {room.longDescription.map((p, idx) => <p key={idx}>{p}</p>)}
-              </div>
+              {roomType.description && (
+                <p className="text-xs md:text-sm text-[#5C5954] leading-relaxed font-light">
+                  {roomType.description}
+                </p>
+              )}
               <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#EAE6DF]">
                 <div className="bg-white p-4 rounded border border-[#ECE7DF] space-y-1">
-                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">SIZE</span>
-                  <p className="text-xs font-semibold text-[#1A1918]">{room.sizeSqFt} sq ft / {room.sizeSqM} m²</p>
+                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">CAPACITY</span>
+                  <p className="text-xs font-semibold text-[#1A1918]">{roomType.capacity} Guests Max</p>
                 </div>
                 <div className="bg-white p-4 rounded border border-[#ECE7DF] space-y-1">
-                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">OCCUPANCY</span>
-                  <p className="text-xs font-semibold text-[#1A1918]">{room.guestsMax} Adults Max</p>
+                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">RATE</span>
+                  <p className="text-xs font-semibold text-[#1A1918]">${roomType.basePrice} / night</p>
                 </div>
                 <div className="bg-white p-4 rounded border border-[#ECE7DF] space-y-1">
-                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">VIEW</span>
-                  <p className="text-xs font-semibold text-[#1A1918]">{room.view}</p>
+                  <span className="text-[9px] uppercase tracking-widest text-[#8C8880] block font-bold">AMENITIES</span>
+                  <p className="text-xs font-semibold text-[#1A1918]">{roomType.amenities.length} Included</p>
                 </div>
               </div>
             </div>
 
             {/* Amenities */}
-            <div className="space-y-6 pt-6 border-t border-[#EAE6DF]">
-              <div className="flex items-center gap-4">
-                <h3 className="font-serif text-xl font-normal text-[#1A1918] shrink-0">Curated Amenities</h3>
-                <div className="h-[1px] bg-[#EAE6DF] w-full" />
+            {roomType.amenities.length > 0 && (
+              <div className="space-y-6 pt-6 border-t border-[#EAE6DF]">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-serif text-xl font-normal text-[#1A1918] shrink-0">Curated Amenities</h3>
+                  <div className="h-[1px] bg-[#EAE6DF] w-full" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {roomType.amenities.map((item) => (
+                    <div key={item._id} className="bg-[#F4F1EA] rounded-md p-3.5 flex items-center gap-3 border border-[#E8E3DA]">
+                      <div className="p-1.5 rounded bg-white shrink-0">{getAmenityIcon(item.icon)}</div>
+                      <span className="text-xs font-medium text-[#2C2A29]">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {room.amenities.map((item, idx) => (
-                  <div key={idx} className="bg-[#F4F1EA] rounded-md p-3.5 flex items-center gap-3 border border-[#E8E3DA]">
-                    <div className="p-1.5 rounded bg-white shrink-0">{getAmenityIcon(item.iconName)}</div>
-                    <span className="text-xs font-medium text-[#2C2A29]">{item.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Gallery */}
-            <div className="space-y-6 pt-6 border-t border-[#EAE6DF]">
-              <div className="flex items-center justify-between">
+            {galleryImages.length > 1 && (
+              <div className="space-y-6 pt-6 border-t border-[#EAE6DF]">
                 <h3 className="font-serif text-xl font-normal text-[#1A1918]">The Experience in Detail</h3>
-                <button
-                  onClick={() => setActivePhotoModal(room.heroImage)}
-                  className="bg-white hover:bg-[#F4F1EA] border border-[#E2DDD5] text-[#1A1918] text-[10px] font-bold tracking-wider uppercase px-3 py-1.5 rounded flex items-center gap-1.5"
-                >
-                  <Maximize2 className="w-3 h-3 text-[#A08149]" />
-                  <span>View All Photos</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {room.galleryImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setActivePhotoModal(img)}
-                    className="h-28 rounded-md overflow-hidden cursor-pointer group relative border border-[#E8E3DA] bg-neutral-200"
-                  >
-                    <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                      <Maximize2 className="w-4 h-4" />
+                <div className="grid grid-cols-3 gap-3">
+                  {galleryImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setActivePhotoModal(img)}
+                      className="h-28 rounded-md overflow-hidden cursor-pointer group relative border border-[#E8E3DA] bg-neutral-200"
+                    >
+                      <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Important Info */}
             <div className="bg-[#F2ECE1] p-6 rounded-lg border border-[#E2DDD5] space-y-3">
@@ -335,10 +470,10 @@ export default function RoomDetailPage() {
                 IMPORTANT INFORMATION
               </h4>
               <ul className="space-y-2 text-xs text-[#5C5954] font-light">
-                {(room.importantInfo ?? [
+                {[
                   'Check-in from 3:00 PM; Check-out before 11:00 AM.',
                   'Flexible cancellation up to 48 hours prior to arrival.',
-                ]).map((info, idx) => (
+                ].map((info, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#A08149] shrink-0 mt-0.5" />
                     <span>{info}</span>
@@ -352,16 +487,9 @@ export default function RoomDetailPage() {
           <div className="lg:col-span-5 sticky top-24">
             <div className="bg-white rounded-lg border border-[#E2DDD5] shadow-2xl overflow-hidden">
               <div className="bg-[#18181B] text-white p-6 space-y-2">
-                <div className="flex items-baseline justify-between">
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-serif text-3xl font-bold">${room.pricePerNight}</span>
-                    <span className="text-xs text-[#A09C94]">/ NIGHT</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-[#E5DFD5]">
-                    <Star className="w-3.5 h-3.5 fill-[#C5A46D] text-[#C5A46D]" />
-                    <span className="font-bold">{room.rating}</span>
-                    <span className="text-[#A09C94]">({room.reviewsCount} REVIEWS)</span>
-                  </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-serif text-3xl font-bold">${roomType.basePrice}</span>
+                  <span className="text-xs text-[#A09C94]">/ NIGHT</span>
                 </div>
                 <p className="text-[11px] text-[#A09C94] font-light">Best price guaranteed for your stay</p>
               </div>
@@ -375,6 +503,7 @@ export default function RoomDetailPage() {
                       <input
                         type="date"
                         value={checkInDate}
+                        min={new Date().toISOString().slice(0, 10)}
                         onChange={(e) => setCheckInDate(e.target.value)}
                         className="bg-transparent font-medium focus:outline-none cursor-pointer w-full text-xs"
                       />
@@ -387,6 +516,7 @@ export default function RoomDetailPage() {
                       <input
                         type="date"
                         value={checkOutDate}
+                        min={checkInDate || new Date().toISOString().slice(0, 10)}
                         onChange={(e) => setCheckOutDate(e.target.value)}
                         className="bg-transparent font-medium focus:outline-none cursor-pointer w-full text-xs"
                       />
@@ -401,7 +531,7 @@ export default function RoomDetailPage() {
                     onChange={(e) => setGuestsCount(Number(e.target.value))}
                     className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded-md p-3 text-xs font-medium text-[#1A1918] focus:outline-none focus:border-[#C5A46D] cursor-pointer"
                   >
-                    {[1, 2, 3, 4].map((n) => (
+                    {Array.from({ length: roomType.capacity }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>{n} Guest{n > 1 ? 's' : ''}</option>
                     ))}
                   </select>
@@ -409,7 +539,7 @@ export default function RoomDetailPage() {
 
                 <div className="space-y-3 pt-2 text-xs text-[#5C5954]">
                   <div className="flex justify-between">
-                    <span>${room.pricePerNight} × {nightsCount} nights</span>
+                    <span>${roomType.basePrice} × {nightsCount} nights</span>
                     <span className="font-medium text-[#1A1918]">${roomSubtotal}</span>
                   </div>
                   <div className="flex justify-between">
@@ -422,10 +552,16 @@ export default function RoomDetailPage() {
                   </div>
                 </div>
 
-                {/* PRESSING THIS REDIRECTS TO LOGIN IF UNAUTHENTICATED */}
+                {availabilityNotice && (
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
+                    {availabilityNotice}
+                  </p>
+                )}
+
                 <button
                   onClick={handleReserve}
-                  className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-4 rounded transition-all shadow-md flex items-center justify-center gap-2"
+                  disabled={!authChecked}
+                  className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-4 rounded transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <CreditCard className="w-4 h-4 text-[#C5A46D]" />
                   <span>RESERVE NOW</span>
@@ -450,9 +586,11 @@ export default function RoomDetailPage() {
       )}
 
       {/* BOOKING MODAL */}
-      {isModalOpen && modalDetails && (
+      {isModalOpen && modalDetails && user && (
         <BookingModal
-          room={room}
+          roomType={roomType}
+          roomTypeId={roomTypeId}
+          user={user}
           bookingDetails={modalDetails}
           onClose={() => setIsModalOpen(false)}
         />

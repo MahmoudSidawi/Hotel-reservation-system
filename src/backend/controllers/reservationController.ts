@@ -24,6 +24,14 @@ export async function listReservations() {
   return Reservation.find().populate("userId").populate("roomId").lean();
 }
 
+export async function listReservationsByUser(userId: string) {
+  await connectToDatabase();
+  return Reservation.find({ userId })
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .sort({ checkIn: -1 })
+    .lean();
+}
+
 export async function getReservationById(id: string) {
   await connectToDatabase();
   const reservation = await Reservation.findById(id)

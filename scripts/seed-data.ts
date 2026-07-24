@@ -21,6 +21,8 @@ const ROOM_TYPES = [
       { roomNumber: "101", floor: 1 },
       { roomNumber: "102", floor: 1 },
       { roomNumber: "103", floor: 1 },
+      { roomNumber: "104", floor: 1 },
+      { roomNumber: "105", floor: 1 },
     ],
   },
   {
@@ -32,6 +34,8 @@ const ROOM_TYPES = [
     rooms: [
       { roomNumber: "201", floor: 2 },
       { roomNumber: "202", floor: 2 },
+      { roomNumber: "203", floor: 2 },
+      { roomNumber: "204", floor: 2 },
     ],
   },
   {
@@ -46,7 +50,48 @@ const ROOM_TYPES = [
       "Swimming Pool",
       "Breakfast Included",
     ],
-    rooms: [{ roomNumber: "301", floor: 3 }],
+    rooms: [
+      { roomNumber: "301", floor: 3 },
+      { roomNumber: "302", floor: 3 },
+    ],
+  },
+  {
+    name: "Single Room",
+    description: "Compact, budget-friendly room ideal for solo travelers.",
+    basePrice: 90,
+    capacity: 1,
+    amenityNames: ["Free WiFi", "Air Conditioning"],
+    rooms: [
+      { roomNumber: "106", floor: 1 },
+      { roomNumber: "107", floor: 1 },
+      { roomNumber: "108", floor: 1 },
+    ],
+  },
+  {
+    name: "Family Room",
+    description: "Extra-spacious room designed for families, with room for everyone to relax.",
+    basePrice: 250,
+    capacity: 4,
+    amenityNames: ["Free WiFi", "Air Conditioning", "Minibar"],
+    rooms: [
+      { roomNumber: "401", floor: 4 },
+      { roomNumber: "402", floor: 4 },
+    ],
+  },
+  {
+    name: "Penthouse Suite",
+    description: "Our most exclusive suite, with panoramic views and every amenity included.",
+    basePrice: 500,
+    capacity: 4,
+    amenityNames: [
+      "Free WiFi",
+      "Air Conditioning",
+      "Minibar",
+      "Swimming Pool",
+      "Breakfast Included",
+      "Free Parking",
+    ],
+    rooms: [{ roomNumber: "501", floor: 5 }],
   },
 ];
 

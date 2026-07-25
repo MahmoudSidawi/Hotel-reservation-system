@@ -4,6 +4,9 @@ import { login } from "@/backend/controllers/authController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
 import { AUTH_COOKIE, SESSION_MAX_AGE_SECONDS } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(request: NextRequest) {
   try {
     const data = loginSchema.parse(await request.json());

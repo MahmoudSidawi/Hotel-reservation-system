@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import connectToDatabase from "@/backend/config/db";
 import User from "@/backend/models/User";
 import { jsonError } from "@/backend/middlewares/errorHandler";
+import { signSession, AUTH_COOKIE, SESSION_MAX_AGE_SECONDS } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(req: Request) {
   try {
@@ -40,19 +44,39 @@ export async function POST(req: Request) {
       phone: phone || undefined,
     });
 
-    return NextResponse.json(
+    const publicUser = {
+      id: String(newUser._id),
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone,
+      role: newUser.role as "guest",
+    };
+
+    // Auto-login registered user by issuing JWT session cookie
+    const token = await signSession({
+      sub: publicUser.id,
+      email: publicUser.email,
+      role: publicUser.role,
+      name: publicUser.name,
+    });
+
+    const response = NextResponse.json(
       {
         message: "User registered successfully",
-        user: {
-          id: String(newUser._id),
-          name: newUser.name,
-          email: newUser.email,
-          phone: newUser.phone,
-          role: newUser.role,
-        },
+        user: publicUser,
       },
       { status: 201 }
     );
+
+    response.cookies.set(AUTH_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    });
+
+    return response;
   } catch (error) {
     return jsonError(error);
   }

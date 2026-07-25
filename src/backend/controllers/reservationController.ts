@@ -4,6 +4,7 @@ import Reservation from "@/backend/models/Reservation";
 import Room from "@/backend/models/Room";
 import User from "@/backend/models/User";
 import { isRoomAvailable } from "@/backend/controllers/roomController";
+import { reservationEvents } from "@/backend/events/reservationEvents";
 import type {
   CreateReservationInput,
   UpdateReservationInput,
@@ -96,7 +97,22 @@ export async function createReservation(data: CreateReservationInput) {
     throw new ConflictError("Selected room is not available for the requested dates");
   }
 
-  return (await Reservation.create(data)).toObject();
+  const created = await Reservation.create(data);
+  const populated = await Reservation.findById(created._id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  const result = populated || created.toObject();
+
+  reservationEvents.broadcast("RESERVATION_CREATED", {
+    reservationId: String(result._id),
+    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    status: result.status,
+    data: result as any,
+  });
+
+  return result;
 }
 
 export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: string) {
@@ -116,7 +132,21 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
 
   await Room.findByIdAndUpdate(data.roomId, { status: "reserved" });
 
-  return reservation.toObject();
+  const populated = await Reservation.findById(reservation._id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  const result = populated || reservation.toObject();
+
+  reservationEvents.broadcast("RESERVATION_CREATED", {
+    reservationId: String(result._id),
+    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    status: result.status,
+    data: result as any,
+  });
+
+  return result;
 }
 
 export async function updateReservation(id: string, data: UpdateReservationInput) {
@@ -136,15 +166,33 @@ export async function updateReservation(id: string, data: UpdateReservationInput
     }
   }
 
-  const reservation = await Reservation.findByIdAndUpdate(id, data, { new: true }).lean();
-  if (!reservation) throw new NotFoundError("Reservation not found");
-  return reservation;
+  await Reservation.findByIdAndUpdate(id, data, { new: true });
+  const updated = await Reservation.findById(id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  if (!updated) throw new NotFoundError("Reservation not found");
+
+  reservationEvents.broadcast("RESERVATION_UPDATED", {
+    reservationId: String(updated._id),
+    userId: updated.userId ? String((updated.userId as any)._id || updated.userId) : undefined,
+    status: updated.status,
+    data: updated as any,
+  });
+
+  return updated;
 }
 
 export async function deleteReservation(id: string) {
   await connectToDatabase();
   const reservation = await Reservation.findByIdAndDelete(id).lean();
   if (!reservation) throw new NotFoundError("Reservation not found");
+
+  reservationEvents.broadcast("RESERVATION_DELETED", {
+    reservationId: String(id),
+    userId: reservation.userId ? String(reservation.userId) : undefined,
+  });
 }
 
 export async function cancelReservation(id: string) {
@@ -160,7 +208,21 @@ export async function cancelReservation(id: string) {
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
 
-  return reservation.toObject();
+  const populated = await Reservation.findById(id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  const result = populated || reservation.toObject();
+
+  reservationEvents.broadcast("RESERVATION_CANCELLED", {
+    reservationId: String(id),
+    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    status: "cancelled",
+    data: result as any,
+  });
+
+  return result;
 }
 
 export async function checkInReservation(id: string) {
@@ -177,7 +239,21 @@ export async function checkInReservation(id: string) {
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "occupied" });
 
-  return reservation.toObject();
+  const populated = await Reservation.findById(id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  const result = populated || reservation.toObject();
+
+  reservationEvents.broadcast("RESERVATION_CHECKED_IN", {
+    reservationId: String(id),
+    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    status: "checked_in",
+    data: result as any,
+  });
+
+  return result;
 }
 
 export async function checkOutReservation(id: string, charges: CheckoutChargesInput) {
@@ -198,7 +274,21 @@ export async function checkOutReservation(id: string, charges: CheckoutChargesIn
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
 
-  return reservation.toObject();
+  const populated = await Reservation.findById(id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+
+  const result = populated || reservation.toObject();
+
+  reservationEvents.broadcast("RESERVATION_CHECKED_OUT", {
+    reservationId: String(id),
+    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    status: "checked_out",
+    data: result as any,
+  });
+
+  return result;
 }
 
 export async function getTodaysArrivals() {

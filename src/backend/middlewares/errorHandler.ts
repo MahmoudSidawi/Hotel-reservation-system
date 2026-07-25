@@ -4,8 +4,12 @@ import { NotFoundError, UnauthorizedError, ForbiddenError, ConflictError } from 
 
 export function jsonError(error: unknown) {
   if (error instanceof ZodError) {
+    const formattedMessage = error.issues.map((i) => i.message).join(". ");
     return NextResponse.json(
-      { error: "Validation failed", issues: error.issues },
+      {
+        error: formattedMessage || "Validation failed",
+        issues: error.issues,
+      },
       { status: 400 }
     );
   }
@@ -30,13 +34,28 @@ export function jsonError(error: unknown) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  if (error instanceof Error && error.name === "MongoServerError" && "code" in error && (error as { code?: number }).code === 11000) {
-    return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+  if (
+    error instanceof Error &&
+    error.name === "MongoServerError" &&
+    "code" in error &&
+    (error as { code?: number }).code === 11000
+  ) {
+    return NextResponse.json(
+      { error: "An account with this email already exists." },
+      { status: 409 }
+    );
   }
 
-  if (error instanceof Error && (error.name === "MongooseServerSelectionError" || error.message.includes("ECONNREFUSED"))) {
+  if (
+    error instanceof Error &&
+    (error.name === "MongooseServerSelectionError" ||
+      error.message.includes("ECONNREFUSED"))
+  ) {
     return NextResponse.json(
-      { error: "Database connection failed. Please ensure MongoDB is running or check MONGODB_URI in .env.local" },
+      {
+        error:
+          "Database connection failed. Please ensure MongoDB is running or check MONGODB_URI in .env.local",
+      },
       { status: 500 }
     );
   }

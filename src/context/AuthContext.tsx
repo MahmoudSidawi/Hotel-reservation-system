@@ -29,19 +29,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchCurrentUser = useCallback(async (): Promise<User | null> => {
     try {
-      console.log("[AuthContext] Fetching current user from /api/auth/me...");
       const res = await fetch("/api/auth/me", {
         method: "GET",
-        headers: { "Cache-Control": "no-cache" },
+        cache: "no-store",
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
       });
 
       if (res.ok) {
         const data = await res.json();
-        console.log("[AuthContext] User fetched successfully:", data.user);
         setUser(data.user);
         return data.user;
       } else {
-        console.log("[AuthContext] No active session found (Status:", res.status, ")");
         setUser(null);
         return null;
       }
@@ -60,10 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      console.log("[AuthContext] Logging out user...");
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
-      console.log("[AuthContext] Logout successful. Redirecting to /login...");
       router.push("/login");
       router.refresh();
     } catch (err) {

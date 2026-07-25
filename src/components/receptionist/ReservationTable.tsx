@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Eye, Pencil, XCircle, LogIn, LogOut, Loader2, Search } from "lucide-react";
 import StatusBadge from "@/components/receptionist/StatusBadge";
 import { getGuestName, getGuestPhone } from "@/lib/reservationDisplay";
+import { useRealtimeReservations } from "@/lib/hooks/useRealtimeReservations";
 
 type ReservationRow = {
   _id: string;
@@ -70,6 +71,10 @@ export default function ReservationTable({
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, status, sortBy, sortDir]);
+
+  useRealtimeReservations(() => {
+    fetchReservations();
+  });
 
   const runAction = async (id: string, action: "cancel" | "check-in" | "check-out") => {
     if (action === "cancel" && !window.confirm("Cancel this reservation?")) return;

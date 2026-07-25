@@ -10,6 +10,7 @@ import {
 import {
   ApiRoomType, ApiRoomImage, getAmenityIcon, fallbackImageFor, type BookingDetails,
 } from '@/lib/rooms-data';
+import { useAuth } from '@/context/AuthContext';
 
 type CurrentUser = { id: string; name: string; email: string; role: string };
 
@@ -29,20 +30,43 @@ function BookingModal({
   bookingDetails: BookingDetails;
   onClose: () => void;
 }) {
+  const [modalCheckIn, setModalCheckIn]       = useState(bookingDetails.checkIn);
+  const [modalCheckOut, setModalCheckOut]     = useState(bookingDetails.checkOut);
+  const [modalGuests, setModalGuests]         = useState(bookingDetails.guests);
+  const [paymentMethod, setPaymentMethod]     = useState('check_in');
   const [specialRequests, setSpecialRequests] = useState('');
   const [submitting, setSubmitting]           = useState(false);
   const [submitError, setSubmitError]         = useState<string | null>(null);
   const [confirmation, setConfirmation]       = useState<{ id: string } | null>(null);
+
+  const calculatedNights = useMemo(() => {
+    if (!modalCheckIn || !modalCheckOut) return 0;
+    const start = new Date(modalCheckIn);
+    const end = new Date(modalCheckOut);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+  }, [modalCheckIn, modalCheckOut]);
+
+  const basePricePerNight = roomType.basePrice || 500;
+  const roomSubtotal = calculatedNights * basePricePerNight;
+  const taxesAndFees = Math.round(roomSubtotal * 0.12);
+  const grandTotal = roomSubtotal + taxesAndFees;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
 
+    if (calculatedNights <= 0) {
+      setSubmitError("Check-out date must strictly occur after check-in date.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const params = new URLSearchParams({
-        checkIn: bookingDetails.checkIn,
-        checkOut: bookingDetails.checkOut,
+        checkIn: modalCheckIn,
+        checkOut: modalCheckOut,
         roomTypeId,
       });
       const availableRes = await fetch(`/api/rooms/available?${params.toString()}`);
@@ -51,7 +75,7 @@ function BookingModal({
         throw new Error(availableRooms.error ?? 'Failed to check room availability');
       }
       if (!Array.isArray(availableRooms) || availableRooms.length === 0) {
-        throw new Error('No rooms of this type are available for the selected dates anymore.');
+        throw new Error('No rooms of this type are available for the selected dates.');
       }
       const roomId = availableRooms[0]._id as string;
 
@@ -59,12 +83,11 @@ function BookingModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
           roomId,
-          checkIn: bookingDetails.checkIn,
-          checkOut: bookingDetails.checkOut,
-          guests: bookingDetails.guests,
-          totalPrice: bookingDetails.total,
+          checkIn: modalCheckIn,
+          checkOut: modalCheckOut,
+          guests: Number(modalGuests),
+          totalPrice: grandTotal,
           specialRequests: specialRequests || undefined,
         }),
       });
@@ -80,14 +103,14 @@ function BookingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#FAF8F5] rounded-xl border border-[#E2DDD5] max-w-lg w-full overflow-hidden shadow-2xl">
-        <div className="bg-[#18181B] text-white p-6 flex items-center justify-between border-b border-[#27272A]">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[#FAF8F5] rounded-xl border border-[#E2DDD5] max-w-lg w-full overflow-hidden shadow-2xl my-8">
+        <div className="bg-[#18181B] text-white p-5 flex items-center justify-between border-b border-[#27272A]">
           <div>
             <span className="text-[9px] uppercase tracking-[0.2em] text-[#C5A46D] font-bold block">
               VELORA LUXURY RESORT
             </span>
-            <h3 className="font-serif text-xl font-normal text-white mt-1">
+            <h3 className="font-serif text-lg font-normal text-white mt-0.5">
               {confirmation ? 'Reservation Confirmed' : 'Complete Your Reservation'}
             </h3>
           </div>
@@ -97,16 +120,16 @@ function BookingModal({
         </div>
 
         {confirmation ? (
-          <div className="p-8 text-center space-y-6">
-            <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-700">
-              <CheckCircle className="w-8 h-8" />
+          <div className="p-6 text-center space-y-5">
+            <div className="w-14 h-14 bg-emerald-100 border border-emerald-300 rounded-full flex items-center justify-center mx-auto text-emerald-700">
+              <CheckCircle className="w-7 h-7" />
             </div>
-            <div className="space-y-2">
-              <h4 className="font-serif text-2xl font-normal text-[#1A1918]">
+            <div className="space-y-1">
+              <h4 className="font-serif text-xl font-normal text-[#1A1918]">
                 We look forward to welcoming you, {user.name}!
               </h4>
               <p className="text-xs text-[#6E6B65]">
-                Your booking reference is{' '}
+                Booking Reference:{' '}
                 <span className="font-mono font-bold text-[#1A1918] bg-[#EAE2D5] px-2 py-0.5 rounded">
                   {confirmation.id}
                 </span>
@@ -119,25 +142,24 @@ function BookingModal({
               </div>
               <div className="flex justify-between border-b border-[#F2EEE8] pb-2">
                 <span className="font-semibold text-[#1A1918]">Dates</span>
-                <span>{bookingDetails.checkIn} → {bookingDetails.checkOut} ({bookingDetails.nights} nights)</span>
+                <span>{modalCheckIn} → {modalCheckOut} ({calculatedNights} nights)</span>
               </div>
               <div className="flex justify-between border-b border-[#F2EEE8] pb-2">
                 <span className="font-semibold text-[#1A1918]">Guests</span>
-                <span>{bookingDetails.guests} Guests</span>
+                <span>{modalGuests} Guests</span>
               </div>
               <div className="flex justify-between pt-1 text-sm font-bold text-[#1A1918]">
                 <span>Total Amount Payable</span>
-                <span className="font-serif text-base">${bookingDetails.total}</span>
+                <span className="font-serif text-base">${grandTotal}</span>
               </div>
             </div>
             <p className="text-[11px] text-[#8C8880]">
-              A confirmation has been recorded under{' '}
-              <span className="font-medium text-[#1A1918]">{user.email}</span>.
+              Confirmation saved to your account (<span className="font-medium text-[#1A1918]">{user.email}</span>).
             </p>
             <div className="flex flex-col gap-2">
               <Link
                 href="/reservations"
-                className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors"
+                className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.2em] py-3 rounded transition-colors text-center"
               >
                 View My Reservations
               </Link>
@@ -150,54 +172,129 @@ function BookingModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs">
-            <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-[#E2DDD5]">
-              <div className="space-y-1">
+          <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+            {/* Header Suite Summary */}
+            <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-[#E2DDD5]">
+              <div className="space-y-0.5">
                 <h4 className="font-serif text-base font-semibold text-[#1A1918]">{roomType.name}</h4>
-                <div className="flex items-center gap-3 text-[11px] text-[#6E6B65]">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-[#A08149]" />
-                    <span>{bookingDetails.nights} Nights</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3 text-[#A08149]" />
-                    <span>{bookingDetails.guests} Guests</span>
-                  </span>
-                </div>
+                <p className="text-[11px] text-[#6E6B65]">
+                  ${basePricePerNight} / night • Max {roomType.capacity} Guests
+                </p>
               </div>
             </div>
-            <div className="space-y-3">
+
+            {/* Dates & Guests Controls */}
+            <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-[#E2DDD5]">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">BOOKING UNDER</label>
-                <div className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918]">
-                  {user.name} ({user.email})
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">SPECIAL REQUESTS (OPTIONAL)</label>
-                <textarea
-                  rows={2}
-                  value={specialRequests}
-                  onChange={(e) => setSpecialRequests(e.target.value)}
-                  placeholder="High floor, champagne on arrival..."
-                  className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
+                  CHECK-IN DATE
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={modalCheckIn}
+                  onChange={(e) => setModalCheckIn(e.target.value)}
+                  className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded px-2.5 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
                 />
               </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
+                  CHECK-OUT DATE
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={modalCheckOut}
+                  onChange={(e) => setModalCheckOut(e.target.value)}
+                  className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded px-2.5 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
+                />
+              </div>
+              <div className="col-span-2 flex items-center justify-between pt-1 border-t border-[#F2EEE8]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880]">
+                  GUEST COUNT
+                </label>
+                <select
+                  value={modalGuests}
+                  onChange={(e) => setModalGuests(Number(e.target.value))}
+                  className="bg-[#FAF8F5] border border-[#E2DDD5] rounded px-3 py-1 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
+                >
+                  {Array.from({ length: roomType.capacity }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>
+                      {num} {num === 1 ? "Guest" : "Guests"}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="bg-[#F2ECE1] p-3.5 rounded border border-[#E2DDD5] flex justify-between items-center">
-              <span className="font-semibold text-[#1A1918]">Total Payable Due at Check-In:</span>
-              <span className="font-serif text-lg font-bold text-[#1A1918]">${bookingDetails.total}</span>
+
+            {/* Guest Details */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
+                RESERVATION OWNER
+              </label>
+              <div className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918]">
+                {user.name} ({user.email})
+              </div>
             </div>
+
+            {/* Payment Method */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
+                PAYMENT METHOD
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
+              >
+                <option value="check_in">Pay at Front Desk upon Check-In</option>
+                <option value="card_guarantee">Credit / Debit Card (Guarantee)</option>
+              </select>
+            </div>
+
+            {/* Special Requests */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
+                SPECIAL REQUESTS (OPTIONAL)
+              </label>
+              <textarea
+                rows={2}
+                value={specialRequests}
+                onChange={(e) => setSpecialRequests(e.target.value)}
+                placeholder="Late check-in, high floor, quiet room..."
+                className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
+              />
+            </div>
+
+            {/* Financial Calculation Breakdown */}
+            <div className="bg-[#F2ECE1] p-3.5 rounded border border-[#E2DDD5] space-y-1.5">
+              <div className="flex justify-between text-xs text-[#6E6B65]">
+                <span>${basePricePerNight} × {calculatedNights} Nights</span>
+                <span>${roomSubtotal}</span>
+              </div>
+              <div className="flex justify-between text-xs text-[#6E6B65]">
+                <span>Taxes & Resort Service Fees (12%)</span>
+                <span>${taxesAndFees}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-[#E2DDD5]">
+                <span className="font-bold text-[#1A1918]">Total Payable Amount:</span>
+                <span className="font-serif text-lg font-bold text-[#1A1918]">${grandTotal}</span>
+              </div>
+            </div>
+
+            {/* Detailed Backend Error Display */}
             {submitError && (
-              <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
-                {submitError}
-              </p>
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2.5 rounded flex items-start gap-2">
+                <span className="font-bold">Error:</span>
+                <span>{submitError}</span>
+              </div>
             )}
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-[#1A1918] hover:bg-[#2C2A29] text-white font-bold tracking-[0.2em] text-xs uppercase py-3.5 rounded transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -221,12 +318,14 @@ export default function RoomDetailPage() {
   const router = useRouter();
   const roomTypeId = params?.id as string;
 
+  const { user: authUser, loading: authLoading } = useAuth();
+  const user = authUser ? { id: authUser.id, name: authUser.name, email: authUser.email, role: authUser.role } : null;
+  const authChecked = !authLoading;
+
   const [roomType, setRoomType]   = useState<ApiRoomType | null>(null);
   const [images, setImages]       = useState<ApiRoomImage[]>([]);
-  const [user, setUser]           = useState<CurrentUser | null>(null);
   const [loading, setLoading]     = useState(true);
   const [notFound, setNotFound]   = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
   const [checkInDate, setCheckInDate] = useState(() => {
     const inDate = new Date();
@@ -284,18 +383,6 @@ export default function RoomDetailPage() {
       controller.abort();
     };
   }, [roomTypeId]);
-
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(async (res) => {
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.user as CurrentUser;
-      })
-      .then((currentUser) => setUser(currentUser ?? null))
-      .catch(() => setUser(null))
-      .finally(() => setAuthChecked(true));
-  }, []);
 
   const galleryImages = useMemo(() => {
     if (images.length === 0) return [fallbackImageFor(roomTypeId ?? 'room')];

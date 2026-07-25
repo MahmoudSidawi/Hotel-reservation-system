@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, loading, logout } = useAuth();
+  const pathname = usePathname();
 
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -23,6 +25,10 @@ export default function Navbar() {
     }
   };
 
+  const isCustomer = user && user.role === "guest";
+  const isAdmin = user && user.role === "admin";
+  const isReceptionist = user && user.role === "receptionist";
+
   return (
     <header className="sticky top-0 z-50 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 text-neutral-200 w-full">
       <div className="w-full px-6 md:px-12 h-20 flex items-center justify-between">
@@ -36,19 +42,50 @@ export default function Navbar() {
 
         {/* Desktop Nav Links */}
         <nav className="hidden md:flex items-center gap-8 text-sm tracking-wide text-neutral-300">
-          <Link href="/rooms" className="hover:text-white transition-colors">Rooms</Link>
-          <Link href="/#amenities" className="hover:text-white transition-colors">Amenities</Link>
-          <Link href="/#gallery" className="hover:text-white transition-colors">Gallery</Link>
-          <Link href="/#stories" className="hover:text-white transition-colors">Stories</Link>
+          <Link
+            href="/rooms"
+            className={`transition-colors ${
+              pathname === "/rooms" ? "text-amber-400 font-semibold" : "hover:text-white"
+            }`}
+          >
+            Rooms
+          </Link>
+          <Link href="/#amenities" className="hover:text-white transition-colors">
+            Amenities
+          </Link>
+          <Link href="/#gallery" className="hover:text-white transition-colors">
+            Gallery
+          </Link>
+          <Link href="/#stories" className="hover:text-white transition-colors">
+            Stories
+          </Link>
           <a href="#contact" onClick={handleContactClick} className="hover:text-white transition-colors cursor-pointer">
             Contact
           </a>
-          {user?.role === "admin" && (
+
+          {/* Customer Only: My Reservations */}
+          {isCustomer && (
+            <Link
+              href="/reservations"
+              className={`transition-colors font-medium ${
+                pathname === "/reservations"
+                  ? "text-amber-400 border-b-2 border-amber-400 pb-0.5"
+                  : "hover:text-white"
+              }`}
+            >
+              My Reservations
+            </Link>
+          )}
+
+          {/* Admin Dashboard */}
+          {isAdmin && (
             <Link href="/admin" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
               Admin Dashboard
             </Link>
           )}
-          {user?.role === "receptionist" && (
+
+          {/* Receptionist Portal */}
+          {isReceptionist && (
             <Link href="/receptionist" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
               Receptionist Portal
             </Link>
@@ -72,8 +109,8 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-sm font-medium hover:text-white px-3 py-2 transition-colors"
             >
               Login
@@ -88,7 +125,7 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Menu Button */}
-        <button 
+        <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="md:hidden text-neutral-300 focus:outline-none"
         >
@@ -105,27 +142,72 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-6 py-4 flex flex-col gap-4 text-sm">
-          <Link href="/rooms" onClick={() => setMobileMenuOpen(false)}>Rooms</Link>
-          <Link href="/#amenities" onClick={() => setMobileMenuOpen(false)}>Amenities</Link>
-          <Link href="/#gallery" onClick={() => setMobileMenuOpen(false)}>Gallery</Link>
-          <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>Stories</Link>
-          <a href="#contact" onClick={handleContactClick} className="cursor-pointer">Contact</a>
-          {user?.role === "admin" && (
-            <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">Admin Dashboard</Link>
+          <Link href="/rooms" onClick={() => setMobileMenuOpen(false)}>
+            Rooms
+          </Link>
+          <Link href="/#amenities" onClick={() => setMobileMenuOpen(false)}>
+            Amenities
+          </Link>
+          <Link href="/#gallery" onClick={() => setMobileMenuOpen(false)}>
+            Gallery
+          </Link>
+          <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>
+            Stories
+          </Link>
+          <a href="#contact" onClick={handleContactClick} className="cursor-pointer">
+            Contact
+          </a>
+
+          {/* Customer Only: My Reservations */}
+          {isCustomer && (
+            <Link
+              href="/reservations"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`font-medium ${
+                pathname === "/reservations" ? "text-amber-400 font-bold" : "text-amber-200 hover:text-white"
+              }`}
+            >
+              My Reservations
+            </Link>
           )}
-          {user?.role === "receptionist" && (
-            <Link href="/receptionist" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">Receptionist Portal</Link>
+
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">
+              Admin Dashboard
+            </Link>
+          )}
+
+          {isReceptionist && (
+            <Link href="/receptionist" onClick={() => setMobileMenuOpen(false)} className="text-amber-400 font-semibold">
+              Receptionist Portal
+            </Link>
           )}
           <hr className="border-neutral-800 my-1" />
           {user ? (
             <div className="flex justify-between items-center py-1">
               <span className="text-xs text-neutral-300">Hi, {user.name}</span>
-              <button onClick={() => { setMobileMenuOpen(false); logout(); }} className="text-xs text-amber-200 font-medium">Logout</button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  logout();
+                }}
+                className="text-xs text-amber-200 font-medium"
+              >
+                Logout
+              </button>
             </div>
           ) : (
-            <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-amber-200 font-medium">Login</Link>
+            <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-amber-200 font-medium">
+              Login
+            </Link>
           )}
-          <Link href="/#book" onClick={() => setMobileMenuOpen(false)} className="text-center border border-white py-2 uppercase text-xs">Book Now</Link>
+          <Link
+            href="/#book"
+            onClick={() => setMobileMenuOpen(false)}
+            className="text-center border border-white py-2 uppercase text-xs"
+          >
+            Book Now
+          </Link>
         </div>
       )}
     </header>

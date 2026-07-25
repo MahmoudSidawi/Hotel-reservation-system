@@ -30,6 +30,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { useRealtimeReservations } from '@/lib/hooks/useRealtimeReservations';
 
 // ==========================================
 // TYPES
@@ -1027,6 +1028,10 @@ export function Admin() {
   useEffect(() => {
     fetchAdminData();
   }, [fetchAdminData]);
+
+  useRealtimeReservations(() => {
+    fetchAdminData(false);
+  });
 
   const handleUpdateRoomStatus = async (roomId: string, status: RoomStatus) => {
     try {

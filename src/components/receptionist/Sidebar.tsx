@@ -5,18 +5,23 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   DoorOpen,
+  CalendarPlus,
   ClipboardList,
   LogIn,
   LogOut,
   Building2,
 } from "lucide-react";
 
+// `match` is the pathname used for active-state (usePathname drops the query
+// string, so the two walk-in entries match on the shared path — both highlight
+// on the booking page, which is acceptable).
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/receptionist", icon: LayoutDashboard, exact: true },
-  { label: "Walk-in Booking", href: "/receptionist/walk-in", icon: DoorOpen },
-  { label: "Reservations", href: "/receptionist/reservations", icon: ClipboardList },
-  { label: "Check In", href: "/receptionist/check-in", icon: LogIn },
-  { label: "Check Out", href: "/receptionist/check-out", icon: LogOut },
+  { label: "Dashboard", href: "/receptionist", match: "/receptionist", icon: LayoutDashboard, exact: true },
+  { label: "New Reservation", href: "/receptionist/walk-in?mode=reservation", match: "/receptionist/walk-in", icon: CalendarPlus },
+  { label: "Walk-in", href: "/receptionist/walk-in?mode=walkin", match: "/receptionist/walk-in", icon: DoorOpen },
+  { label: "Reservations", href: "/receptionist/reservations", match: "/receptionist/reservations", icon: ClipboardList },
+  { label: "Check In", href: "/receptionist/check-in", match: "/receptionist/check-in", icon: LogIn },
+  { label: "Check Out", href: "/receptionist/check-out", match: "/receptionist/check-out", icon: LogOut },
 ];
 
 export default function ReceptionistSidebar({ userName }: { userName: string }) {
@@ -51,8 +56,8 @@ export default function ReceptionistSidebar({ userName }: { userName: string }) 
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
+              ? pathname === item.match
+              : pathname.startsWith(item.match);
             return (
               <Link
                 key={item.href}

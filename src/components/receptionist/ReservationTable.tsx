@@ -37,8 +37,10 @@ const SORT_OPTIONS = [
 
 export default function ReservationTable({
   initialReservations,
+  autoFocusSearch = false,
 }: {
   initialReservations: ReservationRow[];
+  autoFocusSearch?: boolean;
 }) {
   const [reservations, setReservations] = useState(initialReservations);
   const [query, setQuery] = useState("");
@@ -104,6 +106,7 @@ export default function ReservationTable({
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
+            autoFocus={autoFocusSearch}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by guest name, reservation ID, phone, or room number..."

@@ -20,7 +20,17 @@ type AvailableRoom = {
   roomTypeId: RoomType | string;
 };
 
-export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[] }) {
+export default function WalkInBookingForm({
+  roomTypes,
+  defaultCheckIn = "",
+  defaultCheckOut = "",
+  submitLabel = "Confirm Booking",
+}: {
+  roomTypes: RoomType[];
+  defaultCheckIn?: string;
+  defaultCheckOut?: string;
+  submitLabel?: string;
+}) {
   const router = useRouter();
 
   const [guestName, setGuestName] = useState("");
@@ -28,8 +38,8 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
   const [guestEmail, setGuestEmail] = useState("");
   const [guestIdNumber, setGuestIdNumber] = useState("");
   const [guests, setGuests] = useState(1);
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
+  const [checkIn, setCheckIn] = useState(defaultCheckIn);
+  const [checkOut, setCheckOut] = useState(defaultCheckOut);
   const [roomTypeId, setRoomTypeId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
@@ -161,9 +171,97 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        {/* Guest Information */}
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4">
-          <h3 className="text-sm font-bold text-zinc-900">Guest Information</h3>
+        {/* Step 1: Stay dates & guests */}
+        <StepCard step={1} title="Stay dates & guests">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Check-in Date" required>
+              <input
+                type="date"
+                required
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="input"
+              />
+            </Field>
+            <Field label="Check-out Date" required>
+              <input
+                type="date"
+                required
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+                className="input"
+              />
+            </Field>
+            <Field label="Number of Guests" required>
+              <input
+                type="number"
+                min={1}
+                max={capacity || undefined}
+                required
+                value={guests}
+                onChange={(e) => setGuests(Number(e.target.value))}
+                className="input"
+              />
+              {overCapacity && (
+                <span className="text-[11px] text-red-600">
+                  This room holds up to {capacity} guest{capacity === 1 ? "" : "s"}.
+                </span>
+              )}
+            </Field>
+            <Field label="Room Type (optional filter)">
+              <select
+                value={roomTypeId}
+                onChange={(e) => setRoomTypeId(e.target.value)}
+                className="input"
+              >
+                <option value="">Any room type</option>
+                {roomTypes.map((rt) => (
+                  <option key={rt._id} value={rt._id}>
+                    {rt.name} (${rt.basePrice}/night)
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </StepCard>
+
+        {/* Step 2: Choose a room (only available rooms are shown) */}
+        <StepCard step={2} title="Choose a room">
+          <Field label="Available Room" required>
+            {loadingRooms ? (
+              <p className="text-xs text-zinc-400 flex items-center gap-2 py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking availability...
+              </p>
+            ) : availabilityError ? (
+              <p className="text-xs text-red-600 py-2">{availabilityError}</p>
+            ) : !checkIn || !checkOut || nights <= 0 ? (
+              <p className="text-xs text-zinc-400 py-2">Select check-in and check-out dates first.</p>
+            ) : availableRooms.length === 0 ? (
+              <p className="text-xs text-zinc-400 py-2">No rooms available for these dates.</p>
+            ) : (
+              <select
+                required
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                className="input"
+              >
+                <option value="">Select a room</option>
+                {availableRooms.map((room) => {
+                  const type = typeof room.roomTypeId !== "string" ? room.roomTypeId : null;
+                  return (
+                    <option key={room._id} value={room._id}>
+                      Room {room.roomNumber} · Floor {room.floor}
+                      {type ? ` · ${type.name}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </Field>
+        </StepCard>
+
+        {/* Step 3: Guest details */}
+        <StepCard step={3} title="Guest details">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Full Name" required>
               <input
@@ -201,94 +299,6 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
               />
             </Field>
           </div>
-        </div>
-
-        {/* Stay Details */}
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4">
-          <h3 className="text-sm font-bold text-zinc-900">Stay Details</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Check-in Date" required>
-              <input
-                type="date"
-                required
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="input"
-              />
-            </Field>
-            <Field label="Check-out Date" required>
-              <input
-                type="date"
-                required
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="input"
-              />
-            </Field>
-            <Field label="Number of Guests" required>
-              <input
-                type="number"
-                min={1}
-                max={capacity || undefined}
-                required
-                value={guests}
-                onChange={(e) => setGuests(Number(e.target.value))}
-                className="input"
-              />
-              {overCapacity && (
-                <span className="text-[11px] text-red-600">
-                  This room holds up to {capacity} guest{capacity === 1 ? "" : "s"}.
-                </span>
-              )}
-            </Field>
-            <Field label="Room Type">
-              <select
-                value={roomTypeId}
-                onChange={(e) => setRoomTypeId(e.target.value)}
-                className="input"
-              >
-                <option value="">Any room type</option>
-                {roomTypes.map((rt) => (
-                  <option key={rt._id} value={rt._id}>
-                    {rt.name} (${rt.basePrice}/night)
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <Field label="Available Room" required>
-            {loadingRooms ? (
-              <p className="text-xs text-zinc-400 flex items-center gap-2 py-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking availability...
-              </p>
-            ) : availabilityError ? (
-              <p className="text-xs text-red-600 py-2">{availabilityError}</p>
-            ) : !checkIn || !checkOut || nights <= 0 ? (
-              <p className="text-xs text-zinc-400 py-2">Select check-in and check-out dates first.</p>
-            ) : availableRooms.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-2">No rooms available for these dates.</p>
-            ) : (
-              <select
-                required
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                className="input"
-              >
-                <option value="">Select a room</option>
-                {availableRooms.map((room) => {
-                  const type = typeof room.roomTypeId !== "string" ? room.roomTypeId : null;
-                  return (
-                    <option key={room._id} value={room._id}>
-                      Room {room.roomNumber} · Floor {room.floor}
-                      {type ? ` · ${type.name}` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            )}
-          </Field>
-
           <Field label="Special Requests">
             <textarea
               value={specialRequests}
@@ -297,13 +307,18 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
               placeholder="Late check-in, extra pillows, etc."
             />
           </Field>
-        </div>
+        </StepCard>
       </div>
 
       {/* Price Summary */}
       <div className="lg:col-span-1">
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4 sticky top-6">
-          <h3 className="text-sm font-bold text-zinc-900">Price Summary</h3>
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-6 rounded-full bg-[#18181B] text-[#D4AF37] text-xs font-bold flex items-center justify-center shrink-0">
+              4
+            </span>
+            <h3 className="text-sm font-bold text-zinc-900">Review &amp; confirm</h3>
+          </div>
           <div className="space-y-2 text-sm text-zinc-600">
             <div className="flex justify-between">
               <span>Room rate</span>
@@ -338,11 +353,33 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
             disabled={!canSubmit}
             className="w-full bg-[#18181B] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? "Booking..." : "Confirm Booking"}
+            {submitting ? "Saving..." : submitLabel}
           </button>
         </div>
       </div>
     </form>
+  );
+}
+
+function StepCard({
+  step,
+  title,
+  children,
+}: {
+  step: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4">
+      <div className="flex items-center gap-2.5">
+        <span className="w-6 h-6 rounded-full bg-[#18181B] text-[#D4AF37] text-xs font-bold flex items-center justify-center shrink-0">
+          {step}
+        </span>
+        <h3 className="text-sm font-bold text-zinc-900">{title}</h3>
+      </div>
+      {children}
+    </div>
   );
 }
 

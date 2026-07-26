@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateAmenitySchema } from "@/backend/validators/amenity";
 import { getAmenityById, updateAmenity, deleteAmenity } from "@/backend/controllers/amenityController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
+import { requireRole } from "@/lib/apiAuth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,6 +17,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin");
     const { id } = await params;
     const data = updateAmenitySchema.parse(await request.json());
     return NextResponse.json(await updateAmenity(id, data));
@@ -26,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin");
     const { id } = await params;
     await deleteAmenity(id);
     return NextResponse.json({ success: true });

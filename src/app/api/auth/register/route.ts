@@ -19,6 +19,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (typeof password !== "string" || password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters." },
+        { status: 400 }
+      );
+    }
+
     await connectToDatabase();
 
     const normalizedEmail = email.toLowerCase().trim();

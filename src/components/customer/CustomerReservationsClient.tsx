@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import StatusBadge from "@/components/receptionist/StatusBadge";
 import { useRealtimeReservations } from "@/lib/hooks/useRealtimeReservations";
+import { nightsBetween } from "@/lib/dates";
 
 type CustomerReservation = {
   _id: string;
@@ -102,7 +103,7 @@ export default function CustomerReservationsClient({
     setCancellingId(id);
     setCancelError(null);
     try {
-      const res = await fetch(`/api/receptionist/reservations/${id}/cancel`, {
+      const res = await fetch(`/api/reservations/${id}/cancel`, {
         method: "POST",
       });
       const data = await res.json();
@@ -125,10 +126,8 @@ export default function CustomerReservationsClient({
   };
 
   const calculateNights = (checkIn: string, checkOut: string) => {
-    const d1 = new Date(checkIn);
-    const d2 = new Date(checkOut);
-    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
-    return diff > 0 ? diff : 1;
+    const nights = nightsBetween(checkIn, checkOut);
+    return nights > 0 ? nights : 1;
   };
 
   const getFilteredReservations = () => {

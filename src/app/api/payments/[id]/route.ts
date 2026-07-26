@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { updatePaymentSchema } from "@/backend/validators/payment";
 import { getPaymentById, updatePayment, deletePayment } from "@/backend/controllers/paymentController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
+import { requireRole } from "@/lib/apiAuth";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin", "receptionist");
     const { id } = await params;
     return NextResponse.json(await getPaymentById(id));
   } catch (error) {
@@ -16,6 +18,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin", "receptionist");
     const { id } = await params;
     const data = updatePaymentSchema.parse(await request.json());
     return NextResponse.json(await updatePayment(id, data));
@@ -26,6 +29,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin", "receptionist");
     const { id } = await params;
     await deletePayment(id);
     return NextResponse.json({ success: true });

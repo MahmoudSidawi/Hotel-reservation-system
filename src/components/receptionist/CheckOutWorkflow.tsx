@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, CheckCircle2, Loader2, LogOut } from "lucide-react";
 import { getGuestName, getGuestPhone } from "@/lib/reservationDisplay";
+import { nightsBetween } from "@/lib/dates";
 
 type ReservationResult = {
   _id: string;
@@ -16,11 +17,6 @@ type ReservationResult = {
   guestPhone?: string;
   roomId?: { roomNumber?: string; floor?: number } | null;
 };
-
-function nightsBetween(checkIn: string, checkOut: string): number {
-  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-  return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
-}
 
 export default function CheckOutWorkflow() {
   const [query, setQuery] = useState("");

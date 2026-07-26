@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { nightsBetween } from "@/lib/dates";
+import { priceQuote } from "@/lib/pricing";
 
 type RoomType = {
   _id: string;
@@ -17,12 +19,6 @@ type AvailableRoom = {
   floor: number;
   roomTypeId: RoomType | string;
 };
-
-function nightsBetween(checkIn: string, checkOut: string): number {
-  if (!checkIn || !checkOut) return 0;
-  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
-}
 
 export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[] }) {
   const router = useRouter();
@@ -54,7 +50,9 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
   const selectedRoomType =
     selectedRoom && typeof selectedRoom.roomTypeId !== "string" ? selectedRoom.roomTypeId : null;
   const basePrice = selectedRoomType?.basePrice ?? 0;
-  const totalPrice = basePrice * nights;
+  const capacity = selectedRoomType?.capacity ?? 0;
+  const { subtotal, taxes, total: totalPrice } = priceQuote(basePrice, nights);
+  const overCapacity = capacity > 0 && guests > capacity;
 
   const loadAvailableRooms = useCallback(
     (signal: AbortSignal) => {
@@ -97,7 +95,7 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
   }, [loadAvailableRooms]);
 
   const canSubmit =
-    guestName.trim() && guestPhone.trim() && guests > 0 && roomId && nights > 0 && !submitting;
+    guestName.trim() && guestPhone.trim() && guests > 0 && roomId && nights > 0 && !overCapacity && !submitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,11 +229,17 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
               <input
                 type="number"
                 min={1}
+                max={capacity || undefined}
                 required
                 value={guests}
                 onChange={(e) => setGuests(Number(e.target.value))}
                 className="input"
               />
+              {overCapacity && (
+                <span className="text-[11px] text-red-600">
+                  This room holds up to {capacity} guest{capacity === 1 ? "" : "s"}.
+                </span>
+              )}
             </Field>
             <Field label="Room Type">
               <select
@@ -308,6 +312,14 @@ export default function WalkInBookingForm({ roomTypes }: { roomTypes: RoomType[]
             <div className="flex justify-between">
               <span>Nights</span>
               <span>{nights}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Taxes &amp; service fees (12%)</span>
+              <span>${taxes.toFixed(2)}</span>
             </div>
           </div>
           <div className="border-t border-zinc-200 pt-3 flex justify-between text-base font-bold text-zinc-900">

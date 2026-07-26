@@ -5,7 +5,7 @@ import type { CreatePaymentInput, UpdatePaymentInput } from "@/backend/validator
 
 export async function listPayments() {
   await connectToDatabase();
-  return Payment.find().populate("reservationId").lean();
+  return Payment.find().sort({ createdAt: -1 }).limit(500).populate("reservationId").lean();
 }
 
 export async function getPaymentById(id: string) {

@@ -16,8 +16,6 @@ export async function middleware(request: NextRequest) {
   const session = token ? await verifySession(token) : null;
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
 
-  console.log(`[Middleware] Path: ${request.nextUrl.pathname}, Session: ${session ? session.email + " (" + session.role + ")" : "null"}`);
-
   if (!session || !rule.roles.includes(session.role)) {
     if (isApiRoute) {
       return NextResponse.json(

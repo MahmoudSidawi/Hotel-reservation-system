@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRoomSchema } from "@/backend/validators/room";
 import { listRooms, createRoom } from "@/backend/controllers/roomController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
+import { requireRole } from "@/lib/apiAuth";
 
 export async function GET() {
   try {
@@ -13,6 +14,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole("admin");
     const data = createRoomSchema.parse(await request.json());
     const room = await createRoom(data);
     return NextResponse.json(room, { status: 201 });

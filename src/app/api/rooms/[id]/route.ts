@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateRoomSchema } from "@/backend/validators/room";
 import { getRoomById, updateRoom, deleteRoom } from "@/backend/controllers/roomController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
+import { requireRole } from "@/lib/apiAuth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,6 +17,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin");
     const { id } = await params;
     const data = updateRoomSchema.parse(await request.json());
     return NextResponse.json(await updateRoom(id, data));
@@ -26,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
+    await requireRole("admin");
     const { id } = await params;
     await deleteRoom(id);
     return NextResponse.json({ success: true });

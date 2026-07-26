@@ -8,7 +8,7 @@ const PUBLIC_FIELDS = "-password";
 
 export async function listUsers() {
   await connectToDatabase();
-  return User.find().select(PUBLIC_FIELDS).lean();
+  return User.find().select(PUBLIC_FIELDS).sort({ createdAt: -1 }).limit(500).lean();
 }
 
 export async function getUserById(id: string) {

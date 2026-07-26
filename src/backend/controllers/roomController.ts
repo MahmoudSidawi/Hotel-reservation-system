@@ -5,7 +5,7 @@ import Reservation from "@/backend/models/Reservation";
 import type { CreateRoomInput, UpdateRoomInput } from "@/backend/validators/room";
 
 // Reservation statuses that still hold a room for their date range.
-const BLOCKING_STATUSES = ["pending", "confirmed", "checked_in"];
+export const BLOCKING_STATUSES = ["pending", "confirmed", "checked_in"];
 
 type AvailabilityQuery = {
   checkIn: Date;

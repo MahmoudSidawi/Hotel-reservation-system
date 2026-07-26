@@ -11,6 +11,8 @@ import {
   ApiRoomType, ApiRoomImage, getAmenityIcon, fallbackImageFor, type BookingDetails,
 } from '@/lib/rooms-data';
 import { useAuth } from '@/context/AuthContext';
+import { nightsBetween } from '@/lib/dates';
+import { priceQuote } from '@/lib/pricing';
 
 type CurrentUser = { id: string; name: string; email: string; role: string };
 
@@ -37,20 +39,18 @@ function BookingModal({
   const [specialRequests, setSpecialRequests] = useState('');
   const [submitting, setSubmitting]           = useState(false);
   const [submitError, setSubmitError]         = useState<string | null>(null);
-  const [confirmation, setConfirmation]       = useState<{ id: string } | null>(null);
+  const [confirmation, setConfirmation]       = useState<{ id: string; total: number } | null>(null);
 
-  const calculatedNights = useMemo(() => {
-    if (!modalCheckIn || !modalCheckOut) return 0;
-    const start = new Date(modalCheckIn);
-    const end = new Date(modalCheckOut);
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
-  }, [modalCheckIn, modalCheckOut]);
+  const calculatedNights = useMemo(
+    () => nightsBetween(modalCheckIn, modalCheckOut),
+    [modalCheckIn, modalCheckOut]
+  );
 
   const basePricePerNight = roomType.basePrice || 500;
-  const roomSubtotal = calculatedNights * basePricePerNight;
-  const taxesAndFees = Math.round(roomSubtotal * 0.12);
-  const grandTotal = roomSubtotal + taxesAndFees;
+  const { subtotal: roomSubtotal, taxes: taxesAndFees, total: grandTotal } = priceQuote(
+    basePricePerNight,
+    calculatedNights
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +94,8 @@ function BookingModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Reservation failed');
 
-      setConfirmation({ id: String(data._id) });
+      // Trust the server's authoritative total, not the client estimate.
+      setConfirmation({ id: String(data._id), total: Number(data.totalPrice ?? grandTotal) });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Reservation failed');
     } finally {
@@ -150,7 +151,7 @@ function BookingModal({
               </div>
               <div className="flex justify-between pt-1 text-sm font-bold text-[#1A1918]">
                 <span>Total Amount Payable</span>
-                <span className="font-serif text-base">${grandTotal}</span>
+                <span className="font-serif text-base">${confirmation.total.toLocaleString()}</span>
               </div>
             </div>
             <p className="text-[11px] text-[#8C8880]">
@@ -392,18 +393,11 @@ export default function RoomDetailPage() {
 
   const heroImage = galleryImages[0];
 
-  const calculateNights = (): number => {
-    if (!checkInDate || !checkOutDate) return 0;
-    const d1 = new Date(checkInDate);
-    const d2 = new Date(checkOutDate);
-    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
-  };
-
-  const nightsCount  = calculateNights();
-  const roomSubtotal = (roomType?.basePrice ?? 0) * nightsCount;
-  const serviceFee   = roomType ? 120 : 0;
-  const grandTotal   = roomSubtotal + serviceFee;
+  const nightsCount  = nightsBetween(checkInDate, checkOutDate);
+  const { subtotal: roomSubtotal, taxes: serviceFee, total: grandTotal } = priceQuote(
+    roomType?.basePrice ?? 0,
+    nightsCount
+  );
 
   const handleReserve = async () => {
     if (!roomType) return;
@@ -639,15 +633,15 @@ export default function RoomDetailPage() {
                 <div className="space-y-3 pt-2 text-xs text-[#5C5954]">
                   <div className="flex justify-between">
                     <span>${roomType.basePrice} × {nightsCount} nights</span>
-                    <span className="font-medium text-[#1A1918]">${roomSubtotal}</span>
+                    <span className="font-medium text-[#1A1918]">${roomSubtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Resort & Service Fee</span>
-                    <span className="font-medium text-[#1A1918]">${serviceFee}</span>
+                    <span>Taxes & Service Fees (12%)</span>
+                    <span className="font-medium text-[#1A1918]">${serviceFee.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between pt-3 border-t border-[#EAE6DF] font-bold text-sm text-[#1A1918]">
                     <span>Total</span>
-                    <span className="font-serif text-lg">${grandTotal}</span>
+                    <span className="font-serif text-lg">${grandTotal.toLocaleString()}</span>
                   </div>
                 </div>
 

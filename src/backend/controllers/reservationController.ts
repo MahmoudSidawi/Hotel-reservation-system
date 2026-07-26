@@ -3,8 +3,11 @@ import { NotFoundError, ConflictError } from "@/lib/errors";
 import Reservation from "@/backend/models/Reservation";
 import Room from "@/backend/models/Room";
 import User from "@/backend/models/User";
-import { isRoomAvailable } from "@/backend/controllers/roomController";
+import { isRoomAvailable, BLOCKING_STATUSES } from "@/backend/controllers/roomController";
 import { reservationEvents } from "@/backend/events/reservationEvents";
+import { notifyReservation } from "@/backend/events/notifications";
+import { nightsBetween } from "@/lib/dates";
+import { priceQuote } from "@/lib/pricing";
 import type {
   CreateReservationInput,
   UpdateReservationInput,
@@ -20,9 +23,90 @@ function todayRange() {
   return { start, end };
 }
 
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Maps a reservation status to the coarse room-status label so dashboards and
+// the room list stay in sync no matter which code path changed the reservation.
+function roomStatusForReservation(status: string): "available" | "reserved" | "occupied" {
+  if (status === "checked_in") return "occupied";
+  if (status === "pending" || status === "confirmed") return "reserved";
+  // checked_out / cancelled / no_show all free the room.
+  return "available";
+}
+
+// Authoritative server-side price so a tampered client payload (totalPrice: 1)
+// can never set the amount owed. Returns the quote plus the room's capacity so
+// callers can enforce occupancy in the same round trip.
+async function quoteReservation(roomId: string, checkIn: Date, checkOut: Date) {
+  const room = await Room.findById(roomId).populate("roomTypeId").lean();
+  if (!room) throw new NotFoundError("Room not found");
+
+  const roomType = room.roomTypeId as unknown as
+    | { basePrice?: number; capacity?: number }
+    | null;
+  const basePrice = roomType?.basePrice ?? 0;
+  const capacity = roomType?.capacity ?? 0;
+
+  const nights = nightsBetween(checkIn, checkOut);
+  const { subtotal, taxes, total } = priceQuote(basePrice, nights);
+
+  return { nights, subtotal, taxes, total, capacity };
+}
+
+// Closes the double-booking race. isRoomAvailable() + create() is a
+// check-then-act with no transaction, so two concurrent requests can both pass
+// the check. After creating, we re-scan for any OTHER blocking reservation that
+// overlaps this room's dates; if one exists that was created first (ordered by
+// createdAt then _id), THIS request is the loser and rolls itself back. Both
+// racers apply the same deterministic tie-break, so exactly one survives.
+async function createReservationAtomic(payload: Record<string, unknown>) {
+  const created = await Reservation.create(payload);
+
+  const conflict = await Reservation.findOne({
+    _id: { $ne: created._id },
+    roomId: payload.roomId,
+    status: { $in: BLOCKING_STATUSES },
+    checkIn: { $lt: payload.checkOut },
+    checkOut: { $gt: payload.checkIn },
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+
+  if (conflict) {
+    const conflictKey = `${new Date(conflict.createdAt as Date).getTime()}_${String(conflict._id)}`;
+    const myKey = `${new Date(created.createdAt as Date).getTime()}_${String(created._id)}`;
+    // Someone booked this room+dates first — undo our insert and fail.
+    if (conflictKey < myKey) {
+      await Reservation.findByIdAndDelete(created._id);
+      throw new ConflictError("Selected room was just booked for these dates. Please choose another.");
+    }
+  }
+
+  return created;
+}
+
+async function populateReservation(id: unknown) {
+  return Reservation.findById(id)
+    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
+    .populate("userId")
+    .lean();
+}
+
+// Bounded so an ever-growing collection can't return an unbounded payload.
+const LIST_LIMIT = 500;
+
 export async function listReservations() {
   await connectToDatabase();
-  return Reservation.find().populate("userId").populate("roomId").lean();
+  return Reservation.find()
+    .sort({ createdAt: -1 })
+    .limit(LIST_LIMIT)
+    .populate("userId")
+    .populate("roomId")
+    .lean();
 }
 
 export async function listReservationsByUser(userId: string) {
@@ -97,13 +181,17 @@ export async function createReservation(data: CreateReservationInput) {
     throw new ConflictError("Selected room is not available for the requested dates");
   }
 
-  const created = await Reservation.create(data);
-  const populated = await Reservation.findById(created._id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
+  const quote = await quoteReservation(data.roomId, data.checkIn, data.checkOut);
+  if (quote.capacity > 0 && data.guests > quote.capacity) {
+    throw new ConflictError(
+      `This room holds up to ${quote.capacity} guest(s); you requested ${data.guests}.`
+    );
+  }
 
-  const result = populated || created.toObject();
+  // Price is computed server-side; a client-supplied totalPrice is ignored.
+  const created = await createReservationAtomic({ ...data, totalPrice: quote.total });
+
+  const result = (await populateReservation(created._id)) || created.toObject();
 
   reservationEvents.broadcast("RESERVATION_CREATED", {
     reservationId: String(result._id),
@@ -111,6 +199,7 @@ export async function createReservation(data: CreateReservationInput) {
     status: result.status,
     data: result as any,
   });
+  notifyReservation("created", result);
 
   return result;
 }
@@ -123,8 +212,16 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
     throw new ConflictError("Selected room is no longer available for these dates");
   }
 
-  const reservation = await Reservation.create({
+  const quote = await quoteReservation(data.roomId, data.checkIn, data.checkOut);
+  if (quote.capacity > 0 && data.guests > quote.capacity) {
+    throw new ConflictError(
+      `This room holds up to ${quote.capacity} guest(s); you requested ${data.guests}.`
+    );
+  }
+
+  const reservation = await createReservationAtomic({
     ...data,
+    totalPrice: quote.total,
     isWalkIn: true,
     status: "confirmed",
     createdBy,
@@ -132,12 +229,7 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
 
   await Room.findByIdAndUpdate(data.roomId, { status: "reserved" });
 
-  const populated = await Reservation.findById(reservation._id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
-
-  const result = populated || reservation.toObject();
+  const result = (await populateReservation(reservation._id)) || reservation.toObject();
 
   reservationEvents.broadcast("RESERVATION_CREATED", {
     reservationId: String(result._id),
@@ -145,39 +237,123 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
     status: result.status,
     data: result as any,
   });
+  notifyReservation("created", result);
 
   return result;
 }
 
+// Allowed status transitions. Anything not listed is rejected so the workflow
+// can't jump straight to, say, checked_out without a check-in.
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  pending: ["confirmed", "checked_in", "cancelled", "no_show"],
+  confirmed: ["checked_in", "cancelled", "no_show"],
+  checked_in: ["checked_out"],
+  checked_out: [],
+  cancelled: [],
+  no_show: [],
+};
+
 export async function updateReservation(id: string, data: UpdateReservationInput) {
   await connectToDatabase();
 
-  if (data.checkIn || data.checkOut || data.roomId) {
-    const existing = await Reservation.findById(id).lean();
-    if (!existing) throw new NotFoundError("Reservation not found");
+  const reservation = await Reservation.findById(id);
+  if (!reservation) throw new NotFoundError("Reservation not found");
 
-    const roomId = data.roomId ?? String(existing.roomId);
-    const checkIn = data.checkIn ?? existing.checkIn;
-    const checkOut = data.checkOut ?? existing.checkOut;
+  const currentStatus = reservation.status ?? "pending";
+  const isTerminal = ["checked_out", "cancelled", "no_show"].includes(currentStatus);
 
-    const available = await isRoomAvailable(roomId, checkIn, checkOut, id);
+  const datesOrRoomChanging =
+    (data.checkIn && data.checkIn.getTime() !== reservation.checkIn.getTime()) ||
+    (data.checkOut && data.checkOut.getTime() !== reservation.checkOut.getTime()) ||
+    (data.roomId && data.roomId !== String(reservation.roomId));
+
+  // A finished/cancelled booking is immutable except through a fresh booking.
+  if (isTerminal && (datesOrRoomChanging || data.guests !== undefined)) {
+    throw new ConflictError(
+      `Cannot modify a reservation with status "${currentStatus}".`
+    );
+  }
+
+  // Validate any status change against the state machine, and apply the same
+  // side effects (room status, actual timestamps, arrival-date guard) the
+  // dedicated endpoints use — so a raw PATCH can't desync Room.status.
+  if (data.status && data.status !== currentStatus) {
+    const allowed = STATUS_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(data.status)) {
+      throw new ConflictError(
+        `Cannot change status from "${currentStatus}" to "${data.status}".`
+      );
+    }
+    if (data.status === "checked_in") {
+      const arrival = startOfDay(data.checkIn ?? reservation.checkIn);
+      if (startOfDay(new Date()) < arrival) {
+        throw new ConflictError("Cannot check in before the reservation's arrival date.");
+      }
+      reservation.actualCheckIn = new Date();
+    }
+    if (data.status === "checked_out") {
+      reservation.actualCheckOut = new Date();
+    }
+    reservation.status = data.status;
+  }
+
+  const nextRoomId = data.roomId ?? String(reservation.roomId);
+  const nextCheckIn = data.checkIn ?? reservation.checkIn;
+  const nextCheckOut = data.checkOut ?? reservation.checkOut;
+  const nextGuests = data.guests ?? reservation.guests;
+
+  if (datesOrRoomChanging) {
+    const available = await isRoomAvailable(nextRoomId, nextCheckIn, nextCheckOut, id);
     if (!available) {
       throw new ConflictError("Selected room is not available for the requested dates");
     }
   }
 
-  await Reservation.findByIdAndUpdate(id, data, { new: true });
-  const updated = await Reservation.findById(id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
+  // Re-quote whenever the priced inputs (room or dates) change, and re-check
+  // capacity whenever the room, dates, or guest count change.
+  if (datesOrRoomChanging || data.guests !== undefined) {
+    const quote = await quoteReservation(nextRoomId, nextCheckIn, nextCheckOut);
+    if (quote.capacity > 0 && nextGuests > quote.capacity) {
+      throw new ConflictError(
+        `This room holds up to ${quote.capacity} guest(s); you requested ${nextGuests}.`
+      );
+    }
+    if (datesOrRoomChanging) {
+      reservation.totalPrice = quote.total;
+    }
+  }
 
-  if (!updated) throw new NotFoundError("Reservation not found");
+  // Apply the remaining editable fields.
+  if (data.roomId !== undefined) reservation.roomId = data.roomId as never;
+  if (data.checkIn !== undefined) reservation.checkIn = data.checkIn;
+  if (data.checkOut !== undefined) reservation.checkOut = data.checkOut;
+  if (data.guests !== undefined) reservation.guests = data.guests;
+  if (data.guestName !== undefined) reservation.guestName = data.guestName;
+  if (data.guestPhone !== undefined) reservation.guestPhone = data.guestPhone;
+  if (data.guestEmail !== undefined) reservation.guestEmail = data.guestEmail;
+  if (data.guestIdNumber !== undefined) reservation.guestIdNumber = data.guestIdNumber;
+  if (data.specialRequests !== undefined) reservation.specialRequests = data.specialRequests;
+  // Staff may override price explicitly (e.g. a comp or discount) only when
+  // dates/room did not just recompute it.
+  if (data.totalPrice !== undefined && !datesOrRoomChanging) {
+    reservation.totalPrice = data.totalPrice;
+  }
+
+  await reservation.save();
+
+  // Keep the room's coarse status aligned with the reservation's.
+  await Room.findByIdAndUpdate(reservation.roomId, {
+    status: roomStatusForReservation(reservation.status ?? "pending"),
+  });
+
+  const updated = (await populateReservation(id)) || reservation.toObject();
 
   reservationEvents.broadcast("RESERVATION_UPDATED", {
-    reservationId: String(updated._id),
-    userId: updated.userId ? String((updated.userId as any)._id || updated.userId) : undefined,
-    status: updated.status,
+    reservationId: String((updated as any)._id),
+    userId: (updated as any).userId
+      ? String((updated as any).userId._id || (updated as any).userId)
+      : undefined,
+    status: (updated as any).status,
     data: updated as any,
   });
 
@@ -188,6 +364,11 @@ export async function deleteReservation(id: string) {
   await connectToDatabase();
   const reservation = await Reservation.findByIdAndDelete(id).lean();
   if (!reservation) throw new NotFoundError("Reservation not found");
+
+  // Free the room if the deleted booking was still holding it.
+  if (BLOCKING_STATUSES.includes(reservation.status ?? "")) {
+    await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
+  }
 
   reservationEvents.broadcast("RESERVATION_DELETED", {
     reservationId: String(id),
@@ -200,7 +381,7 @@ export async function cancelReservation(id: string) {
 
   const reservation = await Reservation.findById(id);
   if (!reservation) throw new NotFoundError("Reservation not found");
-  if (["checked_in", "checked_out", "cancelled"].includes(reservation.status ?? "")) {
+  if (["checked_in", "checked_out", "cancelled", "no_show"].includes(reservation.status ?? "")) {
     throw new ConflictError(`Cannot cancel a reservation with status "${reservation.status}"`);
   }
 
@@ -208,17 +389,48 @@ export async function cancelReservation(id: string) {
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
 
-  const populated = await Reservation.findById(id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
-
-  const result = populated || reservation.toObject();
+  const result = (await populateReservation(id)) || reservation.toObject();
 
   reservationEvents.broadcast("RESERVATION_CANCELLED", {
     reservationId: String(id),
-    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    userId: (result as any).userId
+      ? String((result as any).userId._id || (result as any).userId)
+      : undefined,
     status: "cancelled",
+    data: result as any,
+  });
+  notifyReservation("cancelled", result);
+
+  return result;
+}
+
+export async function markNoShow(id: string) {
+  await connectToDatabase();
+
+  const reservation = await Reservation.findById(id);
+  if (!reservation) throw new NotFoundError("Reservation not found");
+  if (!["pending", "confirmed"].includes(reservation.status ?? "")) {
+    throw new ConflictError(
+      `Cannot mark a reservation with status "${reservation.status}" as no-show.`
+    );
+  }
+  // A no-show can only be recorded once the arrival date has actually passed.
+  if (startOfDay(new Date()) < startOfDay(reservation.checkIn)) {
+    throw new ConflictError("Cannot mark a no-show before the arrival date.");
+  }
+
+  reservation.status = "no_show";
+  await reservation.save();
+  await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
+
+  const result = (await populateReservation(id)) || reservation.toObject();
+
+  reservationEvents.broadcast("RESERVATION_UPDATED", {
+    reservationId: String(id),
+    userId: (result as any).userId
+      ? String((result as any).userId._id || (result as any).userId)
+      : undefined,
+    status: "no_show",
     data: result as any,
   });
 
@@ -233,22 +445,23 @@ export async function checkInReservation(id: string) {
   if (!["pending", "confirmed"].includes(reservation.status ?? "")) {
     throw new ConflictError(`Cannot check in a reservation with status "${reservation.status}"`);
   }
+  // Guests can't be checked in before the day their stay begins.
+  if (startOfDay(new Date()) < startOfDay(reservation.checkIn)) {
+    throw new ConflictError("Cannot check in before the reservation's arrival date.");
+  }
 
   reservation.status = "checked_in";
   reservation.actualCheckIn = new Date();
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "occupied" });
 
-  const populated = await Reservation.findById(id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
-
-  const result = populated || reservation.toObject();
+  const result = (await populateReservation(id)) || reservation.toObject();
 
   reservationEvents.broadcast("RESERVATION_CHECKED_IN", {
     reservationId: String(id),
-    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    userId: (result as any).userId
+      ? String((result as any).userId._id || (result as any).userId)
+      : undefined,
     status: "checked_in",
     data: result as any,
   });
@@ -274,16 +487,13 @@ export async function checkOutReservation(id: string, charges: CheckoutChargesIn
   await reservation.save();
   await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
 
-  const populated = await Reservation.findById(id)
-    .populate({ path: "roomId", populate: { path: "roomTypeId" } })
-    .populate("userId")
-    .lean();
-
-  const result = populated || reservation.toObject();
+  const result = (await populateReservation(id)) || reservation.toObject();
 
   reservationEvents.broadcast("RESERVATION_CHECKED_OUT", {
     reservationId: String(id),
-    userId: result.userId ? String((result.userId as any)._id || result.userId) : undefined,
+    userId: (result as any).userId
+      ? String((result as any).userId._id || (result as any).userId)
+      : undefined,
     status: "checked_out",
     data: result as any,
   });

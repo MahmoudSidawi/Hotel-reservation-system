@@ -29,7 +29,6 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      console.log("[LoginPage] Submitting login request for:", email);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,7 +40,6 @@ function LoginForm() {
         throw new Error(data.error ?? "Sign in failed");
       }
 
-      console.log("[LoginPage] Login response success:", data.user);
       await refreshUser();
 
       // Check role or callbackUrl
@@ -54,11 +52,9 @@ function LoginForm() {
         destination = callbackUrl ?? "/";
       }
 
-      console.log("[LoginPage] Redirecting to:", destination);
       router.push(destination);
       router.refresh();
     } catch (err) {
-      console.error("[LoginPage] Login error:", err);
       setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
       setLoading(false);
@@ -127,12 +123,6 @@ function LoginForm() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-600">
                   PASSWORD
                 </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-[10px] uppercase tracking-wider font-semibold text-amber-800 hover:underline"
-                >
-                  FORGOT?
-                </Link>
               </div>
               <div className="relative flex items-center">
                 <span className="absolute left-3 text-neutral-400 text-sm">🔒</span>

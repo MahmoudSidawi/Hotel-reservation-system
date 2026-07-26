@@ -16,8 +16,6 @@ export default function RoomsPage() {
   const [selectedGuests, setSelectedGuests]     = useState<number>(0);
   const [maxPrice, setMaxPrice]                 = useState<number>(2000);
   const [sortBy, setSortBy]                     = useState<string>('RECOMMENDED');
-  const [newsletterEmail, setNewsletterEmail]   = useState<string>('');
-  const [newsletterSubscribed, setNewsletterSubscribed] = useState<boolean>(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,15 +52,6 @@ export default function RoomsPage() {
     if (sortBy === 'NAME')       return a.name.localeCompare(b.name);
     return 0;
   });
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newsletterEmail) {
-      setNewsletterSubscribed(true);
-      setTimeout(() => setNewsletterSubscribed(false), 4000);
-      setNewsletterEmail('');
-    }
-  };
 
   const handleResetFilters = () => {
     setSelectedGuests(0);
@@ -284,38 +273,6 @@ export default function RoomsPage() {
               )}
             </div>
 
-          </div>
-        </section>
-
-        {/* NEWSLETTER */}
-        <section className="bg-[#FAF8F5] border-t border-[#EAE6DF] py-20 px-6 text-center">
-          <div className="max-w-xl mx-auto space-y-4">
-            <h2 className="font-serif text-3xl font-normal text-[#1A1918]">The Velora Collection</h2>
-            <p className="text-xs text-[#736F68] font-light leading-relaxed">
-              Join our list to receive exclusive offers, seasonal updates, and priority booking for our signature suites.
-            </p>
-            {newsletterSubscribed ? (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-medium">
-                Thank you for subscribing to The Velora Collection.
-              </div>
-            ) : (
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto pt-2">
-                <input
-                  type="email"
-                  required
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="Your email address"
-                  className="flex-1 bg-[#F2EEE8] border border-[#E2DDD5] rounded px-4 py-2.5 text-xs text-[#1A1918] placeholder-[#8C8880] focus:outline-none focus:border-[#C5A46D]"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#1A1918] hover:bg-[#2C2A29] text-white text-xs font-bold uppercase tracking-[0.18em] px-6 py-2.5 rounded transition-colors"
-                >
-                  SUBSCRIBE
-                </button>
-              </form>
-            )}
           </div>
         </section>
       </main>

@@ -13,6 +13,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { nightsBetween } from '@/lib/dates';
 import { priceQuote } from '@/lib/pricing';
+import Navbar from '../../components/navbar';
+import Footer from '../../components/footer';
 
 type CurrentUser = { id: string; name: string; email: string; role: string };
 
@@ -435,27 +437,36 @@ export default function RoomDetailPage() {
 
   if (loading) {
     return (
-      <div className="bg-[#FAF8F5] min-h-screen flex items-center justify-center gap-2 text-xs text-[#8C8880]">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Loading room...</span>
+      <div className="bg-[#FAF8F5] min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center gap-2 text-xs text-[#8C8880]">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Loading room...</span>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   if (notFound || !roomType) {
     return (
-      <div className="bg-[#FAF8F5] min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
-        <h1 className="font-serif text-2xl text-[#1A1918]">Room not found</h1>
-        <p className="text-xs text-[#736F68]">This room may no longer be available.</p>
-        <Link href="/rooms" className="text-xs font-bold uppercase tracking-widest text-[#A08149] hover:underline">
-          Back to Our Rooms
-        </Link>
+      <div className="bg-[#FAF8F5] min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex flex-col items-center justify-center gap-4 text-center px-4">
+          <h1 className="font-serif text-2xl text-[#1A1918]">Room not found</h1>
+          <p className="text-xs text-[#736F68]">This room may no longer be available.</p>
+          <Link href="/rooms" className="text-xs font-bold uppercase tracking-widest text-[#A08149] hover:underline">
+            Back to Our Rooms
+          </Link>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased">
+      <Navbar />
       {/* BACK BAR */}
       <div className="bg-[#18181B] border-b border-[#27272A] px-6 md:px-12 py-2.5">
         <Link
@@ -688,6 +699,8 @@ export default function RoomDetailPage() {
           onClose={() => setIsModalOpen(false)}
         />
       )}
+
+      <Footer />
     </div>
   );
 }

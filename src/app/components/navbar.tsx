@@ -10,21 +10,6 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
 
-  const handleContactClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setMobileMenuOpen(false);
-
-    const contactElement = document.getElementById("contact");
-    if (contactElement) {
-      contactElement.scrollIntoView({ behavior: "smooth" });
-    } else {
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  };
-
   const isCustomer = user && user.role === "guest";
   const isAdmin = user && user.role === "admin";
   const isReceptionist = user && user.role === "receptionist";
@@ -59,9 +44,14 @@ export default function Navbar() {
           <Link href="/#stories" className="hover:text-white transition-colors">
             Stories
           </Link>
-          <a href="#contact" onClick={handleContactClick} className="hover:text-white transition-colors cursor-pointer">
+          <Link
+            href="/contact"
+            className={`transition-colors ${
+              pathname === "/contact" ? "text-amber-400 font-semibold" : "hover:text-white"
+            }`}
+          >
             Contact
-          </a>
+          </Link>
 
           {/* Customer Only: My Reservations */}
           {isCustomer && (
@@ -156,9 +146,9 @@ export default function Navbar() {
           <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>
             Stories
           </Link>
-          <a href="#contact" onClick={handleContactClick} className="cursor-pointer">
+          <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
             Contact
-          </a>
+          </Link>
 
           {/* Customer Only: My Reservations */}
           {isCustomer && (

@@ -1,35 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import Navbar from "@/app/components/navbar";
+import Footer from "@/app/components/footer";
+import { useAuth } from "@/context/AuthContext";
 
 // ---------------------------------------------
-// Inline icons (kept consistent with the Customer dashboard)
+// Inline icons
 // ---------------------------------------------
-const IconBuilding = ({ className = "" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path
-      d="M4 21V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v16M13 21h7a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-7M7 7h1M7 11h1M7 15h1M10 7h1M10 11h1M10 15h1M16 12h1M16 16h1"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconMenu = ({ className = "" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-  </svg>
-);
-
-const IconClose = ({ className = "" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-  </svg>
-);
-
 const IconCheck = ({ className = "" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" className={className}>
     <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -62,29 +40,27 @@ const IconLock = ({ className = "" }: { className?: string }) => (
   </svg>
 );
 
-const navLinks: { label: string; href: string }[] = [
-  { label: "Overview", href: "/Customer" },
-  { label: "Rooms", href: "/rooms" },
-  { label: "Reservations", href: "/reservations" },
-];
-
 type SectionKey = "profile" | "notifications" | "security";
 
 export default function SettingsPage() {
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { user, refreshUser } = useAuth();
   const [activeSection, setActiveSection] = useState<SectionKey>("profile");
 
-  // Profile form
-  const [name, setName] = useState("Eleanor Whitfield");
-  const [email, setEmail] = useState("eleanor@example.com");
-  const [phone, setPhone] = useState("+961 70 123 456");
+  // Profile form — prefilled from the real logged-in account.
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
 
   // Notification preferences
   const [bookingUpdates, setBookingUpdates] = useState(true);
   const [offersAndPromos, setOffersAndPromos] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
+  const [notifError, setNotifError] = useState("");
+  const [notifSaving, setNotifSaving] = useState(false);
 
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
@@ -92,6 +68,19 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  // Prefill every field from the real account once it's loaded.
+  useEffect(() => {
+    if (user) {
+      setName(user.name ?? "");
+      setEmail(user.email ?? "");
+      setPhone(user.phone ?? "");
+      setBookingUpdates(user.notificationPrefs?.bookingUpdates ?? true);
+      setOffersAndPromos(user.notificationPrefs?.offersAndPromos ?? true);
+      setSmsAlerts(user.notificationPrefs?.smsAlerts ?? false);
+    }
+  }, [user]);
 
   const sections: { key: SectionKey; label: string; icon: typeof IconUser }[] = [
     { key: "profile", label: "Profile", icon: IconUser },
@@ -99,22 +88,62 @@ export default function SettingsPage() {
     { key: "security", label: "Security", icon: IconLock },
   ];
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2500);
+  const patchUser = async (body: Record<string, unknown>) => {
+    if (!user) throw new Error("You must be logged in.");
+    const res = await fetch(`/api/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+    return data;
   };
 
-  const handleSaveNotifications = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNotificationsSaved(true);
-    setTimeout(() => setNotificationsSaved(false), 2500);
+    setProfileError("");
+    setProfileSaving(true);
+    try {
+      await patchUser({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim() || undefined,
+      });
+      await refreshUser();
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
-  const handleSavePassword = (e: React.FormEvent) => {
+  const handleSaveNotifications = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNotifError("");
+    setNotifSaving(true);
+    try {
+      await patchUser({ notificationPrefs: { bookingUpdates, offersAndPromos, smsAlerts } });
+      await refreshUser();
+      setNotificationsSaved(true);
+      setTimeout(() => setNotificationsSaved(false), 2500);
+    } catch (err) {
+      setNotifError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setNotifSaving(false);
+    }
+  };
+
+  const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
       setPasswordError("Please fill in all password fields.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -122,71 +151,33 @@ export default function SettingsPage() {
       return;
     }
     setPasswordError("");
-    setPasswordSaved(true);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setTimeout(() => setPasswordSaved(false), 2500);
+    setPasswordSaving(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Update failed.");
+      setPasswordSaved(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setPasswordSaved(false), 2500);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Update failed.");
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f4f2] font-serif text-[#1c1b19]">
-      {/* -------------------- Header -------------------- */}
-      <header className="sticky top-0 z-30 bg-[#141312] text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/Customer" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10">
-              <IconBuilding className="h-4 w-4 text-white" />
-            </span>
-            <span className="text-lg tracking-wide">Velora</span>
-          </Link>
+    <div className="min-h-screen bg-[#f5f4f2] font-serif text-[#1c1b19] flex flex-col">
+      {/* Shared site navigation — same navbar as the rest of the site */}
+      <Navbar />
 
-          <nav className="hidden items-center gap-10 text-xs font-sans font-medium tracking-widest text-white/80 md:flex">
-            {navLinks.map((link) => (
-              <Link key={link.label} href={link.href} className="uppercase transition-colors hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="text-sm font-sans">Eleanor</span>
-              <img
-                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop"
-                alt="Eleanor avatar"
-                className="h-9 w-9 rounded-full object-cover ring-2 ring-[#c9a15f]"
-              />
-            </div>
-            <button
-              onClick={() => setMobileNavOpen((v) => !v)}
-              className="ml-1 flex h-9 w-9 items-center justify-center rounded-md text-white md:hidden"
-              aria-label="Toggle navigation"
-            >
-              {mobileNavOpen ? <IconClose className="h-5 w-5" /> : <IconMenu className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        {mobileNavOpen && (
-          <div className="border-t border-white/10 bg-[#141312] px-5 py-3 font-sans text-sm md:hidden">
-            <div className="flex flex-col gap-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMobileNavOpen(false)}
-                  className="uppercase tracking-widest text-white/80"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main className="mx-auto max-w-5xl px-5 pb-20 pt-8 sm:px-8">
+      <main className="mx-auto w-full max-w-5xl flex-grow px-5 pb-20 pt-8 sm:px-8">
         <div className="mb-8">
           <h1 className="text-4xl leading-tight sm:text-5xl">Settings</h1>
           <p className="mt-2 font-sans text-sm text-neutral-500">
@@ -256,11 +247,15 @@ export default function SettingsPage() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black sm:w-auto"
+                  disabled={profileSaving}
+                  className="w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50 sm:w-auto"
                 >
-                  Save Changes
+                  {profileSaving ? "Saving..." : "Save Changes"}
                 </button>
 
+                {profileError && (
+                  <p className="mt-3 font-sans text-sm text-red-600">{profileError}</p>
+                )}
                 {profileSaved && (
                   <p className="mt-3 flex items-center gap-2 font-sans text-sm text-emerald-600">
                     <IconCheck className="h-4 w-4" /> Profile updated.
@@ -328,11 +323,15 @@ export default function SettingsPage() {
 
                 <button
                   type="submit"
-                  className="mt-6 w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black sm:w-auto"
+                  disabled={notifSaving}
+                  className="mt-6 w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50 sm:w-auto"
                 >
-                  Save Preferences
+                  {notifSaving ? "Saving..." : "Save Preferences"}
                 </button>
 
+                {notifError && (
+                  <p className="mt-3 font-sans text-sm text-red-600">{notifError}</p>
+                )}
                 {notificationsSaved && (
                   <p className="mt-3 flex items-center gap-2 font-sans text-sm text-emerald-600">
                     <IconCheck className="h-4 w-4" /> Preferences saved.
@@ -383,9 +382,10 @@ export default function SettingsPage() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black sm:w-auto"
+                  disabled={passwordSaving}
+                  className="w-full rounded-md bg-[#1c1b19] px-6 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-50 sm:w-auto"
                 >
-                  Update Password
+                  {passwordSaving ? "Updating..." : "Update Password"}
                 </button>
 
                 {passwordError && (
@@ -402,9 +402,8 @@ export default function SettingsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-neutral-200 py-6">
-        <p className="text-center font-sans text-xs text-neutral-400">© 2024 Velora Hospitality Group.</p>
-      </footer>
+      {/* Shared site footer */}
+      <Footer />
     </div>
   );
 }

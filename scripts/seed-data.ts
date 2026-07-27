@@ -95,6 +95,36 @@ const ROOM_TYPES = [
   },
 ];
 
+// Real room photos stored as RoomImage documents (imageUrl is what the schema
+// holds). First entry per type is the primary image. Without these, the UI has
+// nothing to show and falls back to a generic placeholder.
+const ROOM_IMAGES: Record<string, string[]> = {
+  "Standard Room": [
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=1600",
+  ],
+  "Deluxe Room": [
+    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1611048268330-53de574cae3b?auto=format&fit=crop&q=80&w=1600",
+  ],
+  "Executive Suite": [
+    "https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&q=80&w=1600",
+  ],
+  "Single Room": [
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1505692952047-1a78307da8f2?auto=format&fit=crop&q=80&w=1600",
+  ],
+  "Family Room": [
+    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&q=80&w=1600",
+  ],
+  "Penthouse Suite": [
+    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=1600",
+    "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=1600",
+  ],
+};
+
 function daysFromNow(days: number): Date {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
@@ -104,7 +134,7 @@ function daysFromNow(days: number): Date {
 
 async function main() {
   const { connectToDatabase } = await import("../src/backend/config/db");
-  const { Amenity, RoomType, Room, User, Reservation } = await import("../src/backend/models");
+  const { Amenity, RoomType, RoomImage, Room, User, Reservation } = await import("../src/backend/models");
 
   await connectToDatabase();
 
@@ -141,6 +171,20 @@ async function main() {
       }
       await Room.create({ ...room, roomTypeId: roomType._id, status: "available" });
       console.log(`Created room: ${room.roomNumber} (${rt.name})`);
+    }
+
+    // Room images (skip if this type already has any)
+    const imageUrls = ROOM_IMAGES[rt.name] ?? [];
+    const hasImages = await RoomImage.findOne({ roomTypeId: roomType._id });
+    if (!hasImages && imageUrls.length > 0) {
+      await RoomImage.insertMany(
+        imageUrls.map((imageUrl, i) => ({
+          roomTypeId: roomType._id,
+          imageUrl,
+          isPrimary: i === 0,
+        }))
+      );
+      console.log(`Created ${imageUrls.length} images for ${rt.name}`);
     }
   }
 

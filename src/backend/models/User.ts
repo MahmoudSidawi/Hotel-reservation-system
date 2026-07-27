@@ -7,6 +7,12 @@ const UserSchema = new Schema(
     password: { type: String, required: true },
     role: { type: String, enum: ["guest", "receptionist", "admin"], default: "guest" },
     phone: { type: String },
+    // Guest-facing notification preferences, managed from the settings page.
+    notificationPrefs: {
+      bookingUpdates: { type: Boolean, default: true },
+      offersAndPromos: { type: Boolean, default: true },
+      smsAlerts: { type: Boolean, default: false },
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

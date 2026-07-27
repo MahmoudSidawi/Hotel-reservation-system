@@ -37,6 +37,7 @@ export async function GET() {
           email: dbUser.email,
           role: dbUser.role,
           phone: dbUser.phone,
+          notificationPrefs: dbUser.notificationPrefs,
         },
       },
       {

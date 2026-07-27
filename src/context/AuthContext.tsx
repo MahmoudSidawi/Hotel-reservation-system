@@ -5,12 +5,19 @@ import { useRouter } from "next/navigation";
 
 export type UserRole = "guest" | "receptionist" | "admin";
 
+export type NotificationPrefs = {
+  bookingUpdates?: boolean;
+  offersAndPromos?: boolean;
+  smsAlerts?: boolean;
+};
+
 export type User = {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   phone?: string;
+  notificationPrefs?: NotificationPrefs;
 };
 
 type AuthContextType = {
@@ -59,11 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      setUser(null);
-      router.push("/login");
-      router.refresh();
     } catch (err) {
       console.error("[AuthContext] Logout failed:", err);
+    } finally {
+      // Always clear client state and send the user home, where the navbar
+      // shows the Login button again — even if the network call hiccuped.
+      setUser(null);
+      setLoading(false);
+      router.push("/");
+      router.refresh();
     }
   };
 

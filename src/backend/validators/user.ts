@@ -1,11 +1,20 @@
 import { z } from "zod";
 
+const notificationPrefsSchema = z
+  .object({
+    bookingUpdates: z.boolean(),
+    offersAndPromos: z.boolean(),
+    smsAlerts: z.boolean(),
+  })
+  .partial();
+
 export const createUserSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(["guest", "receptionist", "admin"]).optional(),
   phone: z.string().optional(),
+  notificationPrefs: notificationPrefsSchema.optional(),
 });
 
 export const updateUserSchema = createUserSchema.partial();

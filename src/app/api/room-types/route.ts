@@ -4,9 +4,14 @@ import { listRoomTypes, createRoomType } from "@/backend/controllers/roomTypeCon
 import { jsonError } from "@/backend/middlewares/errorHandler";
 import { requireRole } from "@/lib/apiAuth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json(await listRoomTypes());
+    const { searchParams } = new URL(request.url);
+    const checkIn = searchParams.get("checkIn") || undefined;
+    const checkOut = searchParams.get("checkOut") || undefined;
+
+    const roomTypes = await listRoomTypes({ checkIn, checkOut });
+    return NextResponse.json(roomTypes);
   } catch (error) {
     return jsonError(error);
   }

@@ -14,6 +14,24 @@ export default function Navbar() {
   const isAdmin = user && user.role === "admin";
   const isReceptionist = user && user.role === "receptionist";
 
+  const handleContactClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    // Look for element with id="contact" on the current page
+    const contactElement = document.getElementById("contact");
+
+    if (contactElement) {
+      contactElement.scrollIntoView({ behavior: "smooth" });
+    } else {
+      // Fallback: scroll to the bottom of the current page where footer/contact sits
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 text-neutral-200 w-full">
       <div className="w-full px-6 md:px-12 h-20 flex items-center justify-between">
@@ -28,6 +46,14 @@ export default function Navbar() {
         {/* Desktop Nav Links */}
         <nav className="hidden md:flex items-center gap-8 text-sm tracking-wide text-neutral-300">
           <Link
+            href="/"
+            className={`transition-colors ${
+              pathname === "/" ? "text-amber-400 font-semibold" : "hover:text-white"
+            }`}
+          >
+            Home
+          </Link>
+          <Link
             href="/rooms"
             className={`transition-colors ${
               pathname === "/rooms" ? "text-amber-400 font-semibold" : "hover:text-white"
@@ -38,20 +64,18 @@ export default function Navbar() {
           <Link href="/#amenities" className="hover:text-white transition-colors">
             Amenities
           </Link>
-          <Link href="/#gallery" className="hover:text-white transition-colors">
-            Gallery
-          </Link>
           <Link href="/#stories" className="hover:text-white transition-colors">
             Stories
           </Link>
-          <Link
-            href="/contact"
-            className={`transition-colors ${
+          <a
+            href="#contact"
+            onClick={handleContactClick}
+            className={`transition-colors cursor-pointer ${
               pathname === "/contact" ? "text-amber-400 font-semibold" : "hover:text-white"
             }`}
           >
             Contact
-          </Link>
+          </a>
 
           {/* Customer Only: My Reservations */}
           {isCustomer && (
@@ -106,12 +130,6 @@ export default function Navbar() {
               Login
             </Link>
           )}
-          <Link
-            href="/#book"
-            className="border border-neutral-400 px-5 py-2.5 text-xs tracking-widest uppercase text-white hover:bg-white hover:text-black transition-all"
-          >
-            Home
-          </Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -134,21 +152,25 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-6 py-4 flex flex-col gap-4 text-sm">
+          <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+            Home
+          </Link>
           <Link href="/rooms" onClick={() => setMobileMenuOpen(false)}>
             Rooms
           </Link>
           <Link href="/#amenities" onClick={() => setMobileMenuOpen(false)}>
             Amenities
           </Link>
-          <Link href="/#gallery" onClick={() => setMobileMenuOpen(false)}>
-            Gallery
-          </Link>
           <Link href="/#stories" onClick={() => setMobileMenuOpen(false)}>
             Stories
           </Link>
-          <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+          <a
+            href="#contact"
+            onClick={handleContactClick}
+            className="cursor-pointer"
+          >
             Contact
-          </Link>
+          </a>
 
           {/* Customer Only: My Reservations */}
           {isCustomer && (
@@ -174,7 +196,9 @@ export default function Navbar() {
               Receptionist Portal
             </Link>
           )}
+
           <hr className="border-neutral-800 my-1" />
+
           {user ? (
             <div className="flex justify-between items-center py-1">
               <span className="text-xs text-neutral-300">Hi, {user.name}</span>
@@ -193,13 +217,6 @@ export default function Navbar() {
               Login
             </Link>
           )}
-          <Link
-            href="/#book"
-            onClick={() => setMobileMenuOpen(false)}
-            className="text-center border border-white py-2 uppercase text-xs"
-          >
-            Book Now
-          </Link>
         </div>
       )}
     </header>

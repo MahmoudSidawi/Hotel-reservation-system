@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   BedDouble,
@@ -19,6 +20,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Loader2,
+  LogOut,
   LucideIcon,
 } from 'lucide-react';
 import {
@@ -103,7 +105,15 @@ export interface MonthlyRevenueData {
 // SUB-COMPONENTS
 // ==========================================
 
-function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection; onSelectSection: (s: NavSection) => void }) {
+function Sidebar({
+  activeSection,
+  onSelectSection,
+  onLogout,
+}: {
+  activeSection: NavSection;
+  onSelectSection: (s: NavSection) => void;
+  onLogout: () => void;
+}) {
   const items: { label: NavSection; icon: LucideIcon }[] = [
     { label: 'OVERVIEW', icon: LayoutDashboard },
     { label: 'ROOMS', icon: BedDouble },
@@ -149,9 +159,9 @@ function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection
         </nav>
       </div>
 
-      {/* Footer User Info */}
-      <div className="p-4 border-t border-[#27272A] bg-[#09090B]">
-        <div className="flex items-center gap-3">
+      {/* Footer: User Info + Logout */}
+      <div className="border-t border-[#27272A] bg-[#09090B]">
+        <div className="p-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center font-bold text-xs text-[#D4AF37]">
             AD
           </div>
@@ -160,6 +170,14 @@ function Sidebar({ activeSection, onSelectSection }: { activeSection: NavSection
             <p className="text-[10px] text-zinc-500">Connected Live to API</p>
           </div>
         </div>
+
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-4 py-3.5 border-t border-[#27272A] text-xs font-semibold text-zinc-400 hover:text-white hover:bg-[#27272A]/50 transition-all duration-150"
+        >
+          <LogOut className="w-4 h-4 text-zinc-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );
@@ -871,6 +889,7 @@ function NewReservationModal({
 // ==========================================
 
 export function Admin() {
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<NavSection>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -966,7 +985,7 @@ export function Admin() {
 
       // Calculate Guest Profiles from users & reservation history
       const guestMap = new Map<string, GuestProfile>();
-      
+
       // Process registered guests
       rawUsers.forEach((u: any) => {
         if (u.role === 'guest' || !u.role) {
@@ -1088,9 +1107,23 @@ export function Admin() {
     await fetchAdminData();
   };
 
+  // Calls the existing logout API route (clears the server-side session/cookie),
+  // then does a hard redirect to /login so all client-side state resets cleanly.
+  // The redirect happens even if the API call fails, so the admin is never
+  // stuck on the dashboard because of a network hiccup.
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout request failed:', err);
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F4F4F5] text-zinc-900 font-sans antialiased">
-      <Sidebar activeSection={activeSection} onSelectSection={setActiveSection} />
+      <Sidebar activeSection={activeSection} onSelectSection={setActiveSection} onLogout={handleLogout} />
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top Navigation Bar */}

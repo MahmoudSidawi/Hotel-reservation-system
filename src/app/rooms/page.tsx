@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Users, Loader2, Filter, RotateCcw } from 'lucide-react';
+import { Search, Users, Loader2, Filter, RotateCcw, Calendar } from 'lucide-react';
 import { ApiRoomType, ApiRoomImage, getAmenityIcon, fallbackImageFor } from '@/lib/rooms-data';
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
@@ -13,14 +13,28 @@ export default function RoomsPage() {
   const [loading, setLoading]       = useState(true);
   const [loadError, setLoadError]   = useState<string | null>(null);
 
-  const [selectedGuests, setSelectedGuests]     = useState<number>(0);
-  const [maxPrice, setMaxPrice]                 = useState<number>(2000);
-  const [sortBy, setSortBy]                     = useState<string>('RECOMMENDED');
+  // Filter States
+  const [selectedGuests, setSelectedGuests] = useState<number>(0);
+  const [maxPrice, setMaxPrice]             = useState<number>(2000);
+  const [checkInDate, setCheckInDate]       = useState<string>('');
+  const [checkOutDate, setCheckOutDate]     = useState<string>('');
+  const [sortBy, setSortBy]                 = useState<string>('RECOMMENDED');
+
+  // Today's date in YYYY-MM-DD for min date constraints
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
+
+    const params = new URLSearchParams();
+    if (checkInDate) params.append('checkIn', checkInDate);
+    if (checkOutDate) params.append('checkOut', checkOutDate);
+
+    const roomTypesUrl = `/api/room-types${params.toString() ? `?${params.toString()}` : ''}`;
+
     Promise.all([
-      fetch('/api/room-types', { signal: controller.signal }).then((res) => res.json()),
+      fetch(roomTypesUrl, { signal: controller.signal }).then((res) => res.json()),
       fetch('/api/room-images', { signal: controller.signal }).then((res) => res.json()),
     ])
       .then(([roomTypesData, imagesData]) => {
@@ -31,8 +45,9 @@ export default function RoomsPage() {
         if (err.name !== 'AbortError') setLoadError('Failed to load rooms. Please try again.');
       })
       .finally(() => setLoading(false));
+
     return () => controller.abort();
-  }, []);
+  }, [checkInDate, checkOutDate]);
 
   const imageFor = (roomTypeId: string): string => {
     const forType = images.filter((img) => img.roomTypeId === roomTypeId);
@@ -56,8 +71,12 @@ export default function RoomsPage() {
   const handleResetFilters = () => {
     setSelectedGuests(0);
     setMaxPrice(2000);
+    setCheckInDate('');
+    setCheckOutDate('');
     setSortBy('RECOMMENDED');
   };
+
+  const hasActiveFilters = selectedGuests > 0 || maxPrice < 2000 || checkInDate !== '' || checkOutDate !== '';
 
   return (
     <div className="bg-[#FAF8F5] min-h-screen text-[#1A1918] font-sans antialiased flex flex-col justify-between">
@@ -128,7 +147,7 @@ export default function RoomsPage() {
                   <Filter className="w-4 h-4 text-[#A08149]" />
                   <h3 className="font-serif text-lg font-normal text-[#1A1918]">Filter Rooms</h3>
                 </div>
-                {(selectedGuests > 0 || maxPrice < 2000) && (
+                {hasActiveFilters && (
                   <button
                     onClick={handleResetFilters}
                     className="text-[10px] uppercase font-semibold text-[#A08149] hover:underline flex items-center gap-1"
@@ -136,6 +155,43 @@ export default function RoomsPage() {
                     <RotateCcw className="w-3 h-3" /> Reset
                   </button>
                 )}
+              </div>
+
+              {/* DATE RANGE FILTER */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3 text-[#A08149]" />
+                  <span>STAY DATES</span>
+                </label>
+                
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-[10px] text-[#736F68] block mb-1">Check-in</span>
+                    <input
+                      type="date"
+                      min={today}
+                      value={checkInDate}
+                      onChange={(e) => {
+                        setCheckInDate(e.target.value);
+                        if (checkOutDate && e.target.value >= checkOutDate) {
+                          setCheckOutDate('');
+                        }
+                      }}
+                      className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded-md px-3 py-2 text-xs font-medium text-[#1A1918] focus:outline-none focus:border-[#C5A46D] cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-[#736F68] block mb-1">Check-out</span>
+                    <input
+                      type="date"
+                      min={checkInDate || today}
+                      value={checkOutDate}
+                      onChange={(e) => setCheckOutDate(e.target.value)}
+                      className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded-md px-3 py-2 text-xs font-medium text-[#1A1918] focus:outline-none focus:border-[#C5A46D] cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* GUESTS FILTER */}
@@ -192,7 +248,7 @@ export default function RoomsPage() {
             </aside>
 
             {/* RIGHT ROOMS GRID */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3" id="sanctuaries-grid">
               {loading ? (
                 <div className="flex items-center justify-center gap-2 text-xs text-[#8C8880] py-24 bg-white rounded-lg border border-[#EBE6DD]">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -261,7 +317,7 @@ export default function RoomsPage() {
                           </div>
                         </div>
                         <Link
-                          href={`/rooms/${room._id}`}
+                          href={`/rooms/${room._id}${checkInDate && checkOutDate ? `?checkIn=${checkInDate}&checkOut=${checkOutDate}` : ''}`}
                           className="bg-[#1A1918] hover:bg-[#2C2A29] text-white text-[10px] font-bold tracking-[0.18em] uppercase px-4 py-2.5 rounded transition-all shadow-sm hover:shadow"
                         >
                           Details

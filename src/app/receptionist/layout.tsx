@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import ReceptionistSidebar from "@/components/receptionist/Sidebar";
+import ReceptionistShell from "../../components/receptionist/ReceptionistShell";
 
 export default async function ReceptionistLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -11,10 +11,5 @@ export default async function ReceptionistLayout({ children }: { children: React
     redirect("/login");
   }
 
-  return (
-    <div className="flex min-h-screen bg-zinc-50 font-sans">
-      <ReceptionistSidebar userName={user.name} />
-      <main className="flex-1 min-w-0">{children}</main>
-    </div>
-  );
+  return <ReceptionistShell userName={user.name}>{children}</ReceptionistShell>;
 }

@@ -86,7 +86,7 @@ export default function RoomsPage() {
       <main className="flex-grow">
         {/* HERO BANNER */}
         <section
-          className="relative h-[280px] md:h-[360px] bg-cover bg-center flex items-center justify-center text-center px-4 overflow-hidden mb-12"
+          className="relative h-[280px] md:h-[360px] bg-cover bg-center flex items-center justify-center text-center px-4 overflow-hidden mb-8 md:mb-12"
           style={{
             backgroundImage: `linear-gradient(to bottom, rgba(15,15,15,0.45), rgba(15,15,15,0.65)),
               url('https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=2000')`
@@ -96,21 +96,21 @@ export default function RoomsPage() {
             <span className="text-[10px] md:text-xs uppercase font-medium tracking-[0.25em] text-[#E0D5BE] block">
               THE ART OF FINE LIVING
             </span>
-            <h1 className="font-serif text-4xl md:text-6xl font-normal tracking-tight">Our Rooms</h1>
+            <h1 className="font-serif text-3xl md:text-6xl font-normal tracking-tight">Our Rooms</h1>
             <div className="w-12 h-[1px] bg-[#C5A46D] mx-auto my-3" />
-            <p className="text-sm md:text-base font-light text-[#ECE7DE] tracking-wide">
+            <p className="text-xs md:text-base font-light text-[#ECE7DE] tracking-wide">
               Find Your Perfect Stay
             </p>
           </div>
         </section>
 
         {/* MAIN SECTION: LEFT SIDEBAR + RIGHT ROOMS GRID */}
-        <section className="max-w-7xl mx-auto px-6 md:px-12 pb-24">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 pb-16 md:pb-24">
           
           {/* HEADER BAR */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-[#EAE6DF] pb-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-4 border-b border-[#EAE6DF] pb-6">
             <div className="max-w-xl space-y-1">
-              <h2 className="font-serif text-3xl font-normal tracking-tight text-[#1A1918]">
+              <h2 className="font-serif text-2xl md:text-3xl font-normal tracking-tight text-[#1A1918]">
                 Curated Sanctuaries
               </h2>
               <p className="text-xs text-[#736F68] font-light leading-relaxed">
@@ -118,7 +118,7 @@ export default function RoomsPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-[#736F68] shrink-0">
+            <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 md:gap-4 text-xs text-[#736F68] shrink-0 pt-2 md:pt-0">
               <span>Showing {sortedRooms.length} results</span>
               <span className="text-[#C5A46D]">|</span>
               <div className="flex items-center gap-1.5">
@@ -141,7 +141,7 @@ export default function RoomsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
 
             {/* LEFT SIDEBAR FILTERS */}
-            <aside className="lg:col-span-1 bg-white rounded-lg border border-[#EBE6DD] p-6 shadow-sm sticky top-28 space-y-6">
+            <aside className="lg:col-span-1 bg-white rounded-lg border border-[#EBE6DD] p-5 md:p-6 shadow-sm lg:sticky lg:top-28 space-y-6">
               <div className="flex items-center justify-between border-b border-[#F2EEE8] pb-3">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-[#A08149]" />
@@ -164,7 +164,7 @@ export default function RoomsPage() {
                   <span>STAY DATES</span>
                 </label>
                 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
                   <div>
                     <span className="text-[10px] text-[#736F68] block mb-1">Check-in</span>
                     <input
@@ -270,7 +270,7 @@ export default function RoomsPage() {
                       className="bg-white rounded-lg border border-[#ECE7DF] shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col justify-between"
                     >
                       <div>
-                        <div className="relative h-56 overflow-hidden bg-neutral-100">
+                        <div className="relative h-48 sm:h-56 overflow-hidden bg-neutral-100">
                           <img
                             src={imageFor(room._id)}
                             alt={room.name}
@@ -294,7 +294,7 @@ export default function RoomsPage() {
                             </p>
                           )}
                           {room.amenities.length > 0 && (
-                            <div className="flex items-center gap-2 pt-1">
+                            <div className="flex items-center gap-2 pt-1 flex-wrap">
                               {room.amenities.slice(0, 5).map((amenity) => (
                                 <span
                                   key={amenity._id}

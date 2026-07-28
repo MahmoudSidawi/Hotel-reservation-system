@@ -22,6 +22,7 @@ import {
   Loader2,
   LogOut,
   LucideIcon,
+  Menu,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -109,10 +110,14 @@ function Sidebar({
   activeSection,
   onSelectSection,
   onLogout,
+  isOpen,
+  onClose,
 }: {
   activeSection: NavSection;
   onSelectSection: (s: NavSection) => void;
   onLogout: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
   const items: { label: NavSection; icon: LucideIcon }[] = [
     { label: 'OVERVIEW', icon: LayoutDashboard },
@@ -122,64 +127,86 @@ function Sidebar({
   ];
 
   return (
-    <aside className="w-64 bg-[#18181B] text-[#E4E4E7] flex flex-col justify-between border-r border-[#27272A] shrink-0 font-sans select-none min-h-screen">
-      <div>
-        {/* Brand Header */}
-        <div className="p-6 border-b border-[#27272A] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
-            <Building2 className="w-5 h-5" />
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity"
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#18181B] text-[#E4E4E7] flex flex-col justify-between border-r border-[#27272A] shrink-0 font-sans select-none transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div>
+          {/* Brand Header */}
+          <div className="p-6 border-b border-[#27272A] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="font-serif text-lg font-bold tracking-tight text-white">VELORA HOTEL</h1>
+                <p className="text-[10px] uppercase font-mono tracking-widest text-[#D4AF37]">Management System</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1 text-zinc-400 hover:text-white lg:hidden">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div>
-            <h1 className="font-serif text-lg font-bold tracking-tight text-white">VELORA HOTEL</h1>
-            <p className="text-[10px] uppercase font-mono tracking-widest text-[#D4AF37]">Management System</p>
-          </div>
+
+          {/* Navigation */}
+          <nav className="p-4 space-y-1.5 mt-2">
+            <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Core Modules</div>
+            {items.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.label;
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    onSelectSection(item.label);
+                    onClose();
+                  }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[#27272A] text-[#D4AF37] border-l-4 border-[#D4AF37]'
+                      : 'text-zinc-400 hover:text-white hover:bg-[#27272A]/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#D4AF37]' : 'text-zinc-500'}`} />
+                  <span className="capitalize">{item.label.toLowerCase()}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-1.5 mt-2">
-          <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500">Core Modules</div>
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.label;
-            return (
-              <button
-                key={item.label}
-                onClick={() => onSelectSection(item.label)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                  isActive
-                    ? 'bg-[#27272A] text-[#D4AF37] border-l-4 border-[#D4AF37]'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#27272A]/50'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#D4AF37]' : 'text-zinc-500'}`} />
-                <span className="capitalize">{item.label.toLowerCase()}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+        {/* Footer: User Info + Logout */}
+        <div className="border-t border-[#27272A] bg-[#09090B]">
+          <div className="p-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center font-bold text-xs text-[#D4AF37]">
+              AD
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Admin System</p>
+              <p className="text-[10px] text-zinc-500">Connected Live to API</p>
+            </div>
+          </div>
 
-      {/* Footer: User Info + Logout */}
-      <div className="border-t border-[#27272A] bg-[#09090B]">
-        <div className="p-4 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center font-bold text-xs text-[#D4AF37]">
-            AD
-          </div>
-          <div>
-            <p className="text-xs font-bold text-white">Admin System</p>
-            <p className="text-[10px] text-zinc-500">Connected Live to API</p>
-          </div>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3.5 border-t border-[#27272A] text-xs font-semibold text-zinc-400 hover:text-white hover:bg-[#27272A]/50 transition-all duration-150"
+          >
+            <LogOut className="w-4 h-4 text-zinc-500" />
+            <span>Logout</span>
+          </button>
         </div>
-
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-3.5 border-t border-[#27272A] text-xs font-semibold text-zinc-400 hover:text-white hover:bg-[#27272A]/50 transition-all duration-150"
-        >
-          <LogOut className="w-4 h-4 text-zinc-500" />
-          <span>Logout</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -211,7 +238,7 @@ function OverviewModule({
     .reduce((sum: number, r: Reservation) => sum + r.grossValue, 0);
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-zinc-900">Executive Overview</h2>
@@ -219,7 +246,7 @@ function OverviewModule({
         </div>
         <button
           onClick={onOpenNewReservation}
-          className="flex items-center gap-2 bg-[#18181B] hover:bg-zinc-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#18181B] hover:bg-zinc-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition shadow-sm"
         >
           <Plus className="w-4 h-4 text-[#D4AF37]" />
           <span>New Reservation</span>
@@ -227,46 +254,46 @@ function OverviewModule({
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
           <div className="flex justify-between items-center text-zinc-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Inventory</span>
             <BedDouble className="w-5 h-5 text-zinc-400" />
           </div>
-          <p className="text-3xl font-bold text-zinc-900">{totalRooms} Suites</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{totalRooms} Suites</p>
           <p className="text-xs text-zinc-500">Live MongoDB capacity</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
           <div className="flex justify-between items-center text-zinc-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Occupancy Rate</span>
             <Percent className="w-5 h-5 text-amber-500" />
           </div>
-          <p className="text-3xl font-bold text-zinc-900">{occupancyRate}%</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{occupancyRate}%</p>
           <p className="text-xs text-emerald-600 font-medium">Real-time status</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
           <div className="flex justify-between items-center text-zinc-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Active Check-Ins</span>
             <UserCheck className="w-5 h-5 text-emerald-500" />
           </div>
-          <p className="text-3xl font-bold text-zinc-900">{activeCheckIns} Guests</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">{activeCheckIns} Guests</p>
           <p className="text-xs text-zinc-500">In-house guests</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
+        <div className="bg-white p-5 sm:p-6 rounded-xl border border-zinc-200 shadow-sm space-y-2">
           <div className="flex justify-between items-center text-zinc-500">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Revenue</span>
             <DollarSign className="w-5 h-5 text-emerald-600" />
           </div>
-          <p className="text-3xl font-bold text-zinc-900">${totalRevenue.toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-zinc-900">${totalRevenue.toLocaleString()}</p>
           <p className="text-xs text-emerald-600 font-medium">Recorded bookings value</p>
         </div>
       </div>
 
       {/* Revenue Analytics */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
         <div>
           <h3 className="text-base font-bold text-zinc-900">Monthly Revenue & Occupancy Trends</h3>
           <p className="text-xs text-zinc-500">Financial performance from database records</p>
@@ -288,62 +315,64 @@ function OverviewModule({
       </div>
 
       {/* Recent Reservations Table */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden space-y-4 p-6">
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden space-y-4 p-4 sm:p-6">
         <div className="flex justify-between items-center">
           <h3 className="text-base font-bold text-zinc-900">Recent Guest Reservations</h3>
           <button
             onClick={() => onNavigate('RESERVATIONS')}
             className="text-xs font-bold text-zinc-700 hover:text-zinc-900 underline"
           >
-            View All Reservations →
+            View All →
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          {reservations.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-6 text-center">No reservations found in the database.</p>
-          ) : (
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-zinc-50 border-y border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-                  <th className="p-3">Code</th>
-                  <th className="p-3">Guest Name</th>
-                  <th className="p-3">Room / Suite</th>
-                  <th className="p-3">Check-In</th>
-                  <th className="p-3">Check-Out</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Total Price</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-                {reservations.slice(0, 5).map((res: Reservation) => (
-                  <tr key={res.id} className="hover:bg-zinc-50/80 transition">
-                    <td className="p-3 font-mono font-bold text-amber-700">{res.code}</td>
-                    <td className="p-3 font-bold text-zinc-900">{res.clientName}</td>
-                    <td className="p-3">{res.roomNumber} - {res.roomTitle}</td>
-                    <td className="p-3">{res.checkInDate}</td>
-                    <td className="p-3">{res.checkOutDate}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          res.status === 'CHECKED_IN'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : res.status === 'CONFIRMED'
-                            ? 'bg-amber-100 text-amber-800'
-                            : res.status === 'CHECKED_OUT'
-                            ? 'bg-zinc-100 text-zinc-600'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {res.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+            {reservations.length === 0 ? (
+              <p className="text-xs text-zinc-500 py-6 text-center">No reservations found in the database.</p>
+            ) : (
+              <table className="min-w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-zinc-50 border-y border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                    <th className="p-3">Code</th>
+                    <th className="p-3">Guest Name</th>
+                    <th className="p-3 whitespace-nowrap">Room / Suite</th>
+                    <th className="p-3 whitespace-nowrap">Check-In</th>
+                    <th className="p-3 whitespace-nowrap">Check-Out</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right whitespace-nowrap">Total Price</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+                  {reservations.slice(0, 5).map((res: Reservation) => (
+                    <tr key={res.id} className="hover:bg-zinc-50/80 transition">
+                      <td className="p-3 font-mono font-bold text-amber-700 whitespace-nowrap">{res.code}</td>
+                      <td className="p-3 font-bold text-zinc-900 whitespace-nowrap">{res.clientName}</td>
+                      <td className="p-3 whitespace-nowrap">{res.roomNumber} - {res.roomTitle}</td>
+                      <td className="p-3 whitespace-nowrap">{res.checkInDate}</td>
+                      <td className="p-3 whitespace-nowrap">{res.checkOutDate}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            res.status === 'CHECKED_IN'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : res.status === 'CONFIRMED'
+                              ? 'bg-amber-100 text-amber-800'
+                              : res.status === 'CHECKED_OUT'
+                              ? 'bg-zinc-100 text-zinc-600'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
+                        >
+                          {res.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-zinc-900 whitespace-nowrap">${res.grossValue.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -372,19 +401,19 @@ function RoomsModule({
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto font-sans">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-sans">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-zinc-900">Room Inventory & Status</h2>
           <p className="text-xs text-zinc-500">Manage availability, pricing, and room statuses in real-time</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {(['ALL', 'AVAILABLE', 'RESERVED', 'OCCUPIED', 'MAINTENANCE'] as const).map((st) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 filter === st ? 'bg-[#18181B] text-white shadow-sm' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50'
               }`}
             >
@@ -399,7 +428,7 @@ function RoomsModule({
           No rooms match your filter or search criteria.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filtered.map((room: Room) => (
             <div key={room.id} className="bg-white rounded-xl border border-zinc-200 shadow-sm p-5 space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
@@ -484,8 +513,8 @@ function ReservationsModule({
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto font-sans">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-sans">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-zinc-900">Reservations & Reception Workflow</h2>
           <p className="text-xs text-zinc-500">Process guest check-in, check-out, and active booking records</p>
@@ -493,7 +522,7 @@ function ReservationsModule({
 
         <button
           onClick={onOpenNew}
-          className="bg-[#18181B] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2"
+          className="w-full sm:w-auto bg-[#18181B] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4 text-[#D4AF37]" />
           <span>New Booking</span>
@@ -504,88 +533,90 @@ function ReservationsModule({
         {filtered.length === 0 ? (
           <p className="text-xs text-zinc-500 p-8 text-center">No reservations found matching your criteria.</p>
         ) : (
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-                <th className="p-4">Code</th>
-                <th className="p-4">Guest Details</th>
-                <th className="p-4">Room / Suite</th>
-                <th className="p-4">Stay Duration</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Total</th>
-                <th className="p-4 text-right">Workflow Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-              {filtered.map((res: Reservation) => (
-                <tr key={res.id} className="hover:bg-zinc-50/80 transition">
-                  <td className="p-4 font-mono font-bold text-amber-700">{res.code}</td>
-                  <td className="p-4">
-                    <p className="font-bold text-zinc-900">{res.clientName}</p>
-                    <p className="text-[11px] text-zinc-500">{res.clientEmail}</p>
-                  </td>
-                  <td className="p-4">
-                    <p className="font-bold text-zinc-900">Suite #{res.roomNumber}</p>
-                    <p className="text-[11px] text-zinc-500">{res.roomTitle}</p>
-                  </td>
-                  <td className="p-4">
-                    <p className="font-bold text-zinc-900">{res.checkInDate} → {res.checkOutDate}</p>
-                    <p className="text-[11px] text-zinc-500">{res.nightsCount} Nights ({res.guestsCount} Guests)</p>
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        res.status === 'CHECKED_IN'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : res.status === 'CONFIRMED'
-                          ? 'bg-amber-100 text-amber-800'
-                          : res.status === 'CHECKED_OUT'
-                          ? 'bg-zinc-100 text-zinc-600'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {res.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="p-4 font-bold text-zinc-900">${res.grossValue.toLocaleString()}</td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {(res.status === 'CONFIRMED' || res.status === 'PENDING') && (
-                        <button
-                          onClick={() => onUpdateStatus(res.id, 'CHECKED_IN')}
-                          className="px-3 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
-                        >
-                          Check-In
-                        </button>
-                      )}
-                      {res.status === 'CHECKED_IN' && (
-                        <button
-                          onClick={() => onUpdateStatus(res.id, 'CHECKED_OUT')}
-                          className="px-3 py-1 bg-zinc-800 text-white rounded text-[11px] font-bold hover:bg-zinc-900 transition"
-                        >
-                          Check-Out
-                        </button>
-                      )}
-                      {res.status !== 'CANCELLED' && res.status !== 'CHECKED_OUT' && (
-                        <button
-                          onClick={() => onUpdateStatus(res.id, 'CANCELLED')}
-                          className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded text-[11px] font-bold transition"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      <button
-                        onClick={() => onDelete(res.id)}
-                        className="p-1 text-zinc-400 hover:text-rose-600 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[700px]">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                  <th className="p-4">Code</th>
+                  <th className="p-4">Guest Details</th>
+                  <th className="p-4">Room / Suite</th>
+                  <th className="p-4">Stay Duration</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Total</th>
+                  <th className="p-4 text-right">Workflow Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+                {filtered.map((res: Reservation) => (
+                  <tr key={res.id} className="hover:bg-zinc-50/80 transition">
+                    <td className="p-4 font-mono font-bold text-amber-700 whitespace-nowrap">{res.code}</td>
+                    <td className="p-4 whitespace-nowrap">
+                      <p className="font-bold text-zinc-900">{res.clientName}</p>
+                      <p className="text-[11px] text-zinc-500">{res.clientEmail}</p>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <p className="font-bold text-zinc-900">Suite #{res.roomNumber}</p>
+                      <p className="text-[11px] text-zinc-500">{res.roomTitle}</p>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <p className="font-bold text-zinc-900">{res.checkInDate} → {res.checkOutDate}</p>
+                      <p className="text-[11px] text-zinc-500">{res.nightsCount} Nights ({res.guestsCount} Guests)</p>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          res.status === 'CHECKED_IN'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : res.status === 'CONFIRMED'
+                            ? 'bg-amber-100 text-amber-800'
+                            : res.status === 'CHECKED_OUT'
+                            ? 'bg-zinc-100 text-zinc-600'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {res.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="p-4 font-bold text-zinc-900 whitespace-nowrap">${res.grossValue.toLocaleString()}</td>
+                    <td className="p-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        {(res.status === 'CONFIRMED' || res.status === 'PENDING') && (
+                          <button
+                            onClick={() => onUpdateStatus(res.id, 'CHECKED_IN')}
+                            className="px-3 py-1 bg-emerald-600 text-white rounded text-[11px] font-bold hover:bg-emerald-700 transition"
+                          >
+                            Check-In
+                          </button>
+                        )}
+                        {res.status === 'CHECKED_IN' && (
+                          <button
+                            onClick={() => onUpdateStatus(res.id, 'CHECKED_OUT')}
+                            className="px-3 py-1 bg-zinc-800 text-white rounded text-[11px] font-bold hover:bg-zinc-900 transition"
+                          >
+                            Check-Out
+                          </button>
+                        )}
+                        {res.status !== 'CANCELLED' && res.status !== 'CHECKED_OUT' && (
+                          <button
+                            onClick={() => onUpdateStatus(res.id, 'CANCELLED')}
+                            className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 rounded text-[11px] font-bold transition"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onDelete(res.id)}
+                          className="p-1 text-zinc-400 hover:text-rose-600 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -604,7 +635,7 @@ function CustomersModule({ guests, searchQuery }: { guests: GuestProfile[]; sear
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-sans">
       <div>
         <h2 className="text-xl font-bold text-zinc-900">Registered Guest Profiles</h2>
         <p className="text-xs text-zinc-500">Centralized database of hotel guests, contact information, and stay history</p>
@@ -615,19 +646,19 @@ function CustomersModule({ guests, searchQuery }: { guests: GuestProfile[]; sear
           No guest profiles found matching your search.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {filtered.map((g: GuestProfile) => (
-            <div key={g.id} className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-5">
+            <div key={g.id} className="bg-white p-5 sm:p-6 rounded-xl border border-zinc-200 shadow-sm flex items-center gap-4 sm:gap-5">
               <div className="w-12 h-12 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center font-bold text-base text-[#D4AF37] shrink-0">
                 {g.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
-              <div className="space-y-1 flex-1">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-sm text-zinc-900">{g.name}</h3>
-                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">{g.tier}</span>
+              <div className="space-y-1 flex-1 min-w-0">
+                <div className="flex justify-between items-center gap-2">
+                  <h3 className="font-bold text-sm text-zinc-900 truncate">{g.name}</h3>
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full shrink-0">{g.tier}</span>
                 </div>
-                <p className="text-xs text-zinc-500">{g.email} • {g.phone}</p>
-                <div className="flex gap-4 pt-2 text-xs">
+                <p className="text-xs text-zinc-500 truncate">{g.email} • {g.phone}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs">
                   <span className="font-semibold text-zinc-700">Total Stays: <strong className="text-zinc-900">{g.totalStays}</strong></span>
                   <span className="font-semibold text-zinc-700">Total Spent: <strong className="text-amber-700">${g.totalSpent.toLocaleString()}</strong></span>
                 </div>
@@ -653,7 +684,7 @@ function UsersModule({ staff, searchQuery }: { staff: StaffUser[]; searchQuery: 
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto font-sans">
       <div>
         <h2 className="text-xl font-bold text-zinc-900">Staff & Role Administration</h2>
         <p className="text-xs text-zinc-500">User authorization levels and front-desk personnel loaded from database</p>
@@ -663,32 +694,34 @@ function UsersModule({ staff, searchQuery }: { staff: StaffUser[]; searchQuery: 
         {filtered.length === 0 ? (
           <p className="text-xs text-zinc-500 p-8 text-center">No user accounts found matching your query.</p>
         ) : (
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
-                <th className="p-4">Name</th>
-                <th className="p-4">Email</th>
-                <th className="p-4">Department</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
-              {filtered.map((u: StaffUser) => (
-                <tr key={u.id} className="hover:bg-zinc-50/80 transition">
-                  <td className="p-4 font-bold text-zinc-900">{u.name}</td>
-                  <td className="p-4 text-zinc-500">{u.email}</td>
-                  <td className="p-4 text-zinc-600">{u.department}</td>
-                  <td className="p-4 font-bold text-amber-700">{u.role}</td>
-                  <td className="p-4">
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold uppercase">
-                      {u.status}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[600px]">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase font-bold tracking-wider">
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Email</th>
+                  <th className="p-4">Department</th>
+                  <th className="p-4">Role</th>
+                  <th className="p-4">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 text-zinc-800 font-medium">
+                {filtered.map((u: StaffUser) => (
+                  <tr key={u.id} className="hover:bg-zinc-50/80 transition">
+                    <td className="p-4 font-bold text-zinc-900 whitespace-nowrap">{u.name}</td>
+                    <td className="p-4 text-zinc-500 whitespace-nowrap">{u.email}</td>
+                    <td className="p-4 text-zinc-600 whitespace-nowrap">{u.department}</td>
+                    <td className="p-4 font-bold text-amber-700 whitespace-nowrap">{u.role}</td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold uppercase">
+                        {u.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -768,8 +801,8 @@ function NewReservationModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-2xl font-sans">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-lg w-full p-5 sm:p-6 space-y-5 shadow-2xl font-sans my-auto">
         <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
           <h3 className="font-bold text-base text-zinc-900">Create New Reservation</h3>
           <button onClick={onClose} className="p-1 text-zinc-400 hover:text-zinc-700">
@@ -823,7 +856,7 @@ function NewReservationModal({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="font-bold text-zinc-700 block mb-1">Check-In Date</label>
               <input
@@ -892,6 +925,7 @@ export function Admin() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<NavSection>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -1107,10 +1141,6 @@ export function Admin() {
     await fetchAdminData();
   };
 
-  // Calls the existing logout API route (clears the server-side session/cookie),
-  // then does a hard redirect to /login so all client-side state resets cleanly.
-  // The redirect happens even if the API call fails, so the admin is never
-  // stuck on the dashboard because of a network hiccup.
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -1122,27 +1152,43 @@ export function Admin() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F4F4F5] text-zinc-900 font-sans antialiased">
-      <Sidebar activeSection={activeSection} onSelectSection={setActiveSection} onLogout={handleLogout} />
+    <div className="flex min-h-screen bg-[#F4F4F5] text-zinc-900 font-sans antialiased relative">
+      <Sidebar
+        activeSection={activeSection}
+        onSelectSection={setActiveSection}
+        onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top Navigation Bar */}
-        <header className="bg-white border-b border-zinc-200 px-8 py-4 flex items-center justify-between gap-4 sticky top-0 z-10 shadow-xs">
-          <div className="flex items-center gap-3 bg-zinc-100 px-3.5 py-2 rounded-lg border border-zinc-200 w-72">
-            <Search className="w-4 h-4 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search rooms, guests, bookings..."
-              className="bg-transparent text-xs text-zinc-800 focus:outline-none w-full"
-            />
+        <header className="bg-white border-b border-zinc-200 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-3 sticky top-0 z-30 shadow-xs">
+          <div className="flex items-center gap-3 flex-1 max-w-md">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-lg text-zinc-600 hover:bg-zinc-100 lg:hidden"
+              aria-label="Open Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 bg-zinc-100 px-3 py-1.5 sm:py-2 rounded-lg border border-zinc-200 w-full">
+              <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="bg-transparent text-xs text-zinc-800 focus:outline-none w-full"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Backend Connected (MongoDB)</span>
+              <span>Backend Connected</span>
             </div>
 
             <button
@@ -1159,14 +1205,14 @@ export function Admin() {
 
         <main className="flex-1 overflow-y-auto pb-12">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-500 text-xs">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-500 text-xs px-4 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
               <p className="font-semibold">Fetching Live Admin Dashboard Data from Backend...</p>
             </div>
           ) : error ? (
-            <div className="m-8 p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs space-y-3">
+            <div className="m-4 sm:m-8 p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs space-y-3">
               <div className="flex items-center gap-2 font-bold text-sm">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
                 <span>Backend Connection Error</span>
               </div>
               <p>{error}</p>
@@ -1223,10 +1269,12 @@ export function Admin() {
       />
 
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#18181B] text-white px-4 py-3 rounded-lg shadow-xl border border-zinc-700 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-zinc-400 hover:text-white">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 bg-[#18181B] text-white px-4 py-3 rounded-lg shadow-xl border border-zinc-700 flex items-center justify-between gap-3 text-xs font-semibold">
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle2 className="w-4 h-4 text-[#D4AF37] shrink-0" />
+            <span className="truncate">{toastMessage}</span>
+          </div>
+          <button onClick={() => setToastMessage(null)} className="text-zinc-400 hover:text-white shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>

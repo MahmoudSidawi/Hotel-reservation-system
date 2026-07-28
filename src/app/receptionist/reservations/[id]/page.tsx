@@ -42,7 +42,7 @@ export default async function ReservationDetailPage({
   const isCancelled = reservation.status === "cancelled" || reservation.status === "no_show";
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h2 className="text-xl font-bold text-zinc-900">
@@ -53,9 +53,10 @@ export default async function ReservationDetailPage({
         <StatusBadge status={reservation.status ?? "pending"} />
       </div>
 
-      {/* Status Timeline */}
+      {/* Status Timeline — labels hide on very small screens so 4 steps + connectors
+          don't overflow; the numbered circles and progress lines stay visible either way. */}
       {!isCancelled && (
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-4 sm:p-6">
           <div className="flex items-center">
             {TIMELINE_STEPS.map((step, i) => (
               <div key={step} className="flex items-center flex-1 last:flex-none">
@@ -68,12 +69,12 @@ export default async function ReservationDetailPage({
                 >
                   {i + 1}
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 ml-2 mr-4 capitalize">
+                <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-wider text-zinc-500 ml-2 mr-4 capitalize">
                   {step.replace("_", " ")}
                 </span>
                 {i < TIMELINE_STEPS.length - 1 && (
                   <div
-                    className={`flex-1 h-0.5 mr-4 ${
+                    className={`flex-1 h-0.5 mx-1.5 sm:mx-0 sm:mr-4 ${
                       i < currentStepIndex ? "bg-[#D4AF37]" : "bg-zinc-100"
                     }`}
                   />

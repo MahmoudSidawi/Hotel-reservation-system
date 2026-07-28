@@ -312,7 +312,7 @@ export default function WalkInBookingForm({
 
       {/* Price Summary */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4 sticky top-6">
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 space-y-4 lg:sticky lg:top-6">
           <div className="flex items-center gap-2.5">
             <span className="w-6 h-6 rounded-full bg-[#18181B] text-[#D4AF37] text-xs font-bold flex items-center justify-center shrink-0">
               4

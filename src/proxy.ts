@@ -6,10 +6,14 @@ const protectedPrefixes: { prefix: string; roles: UserRole[] }[] = [
   { prefix: "/api/admin", roles: ["admin"] },
   { prefix: "/receptionist", roles: ["admin", "receptionist"] },
   { prefix: "/api/receptionist", roles: ["admin", "receptionist"] },
+  { prefix: "/housekeeping", roles: ["admin", "housekeeping"] },
+  { prefix: "/api/housekeeping", roles: ["admin", "housekeeping"] },
 ];
 
-export async function middleware(request: NextRequest) {
-  const rule = protectedPrefixes.find((r) => request.nextUrl.pathname.startsWith(r.prefix));
+export async function proxy(request: NextRequest) {
+  const rule = protectedPrefixes.find((r) =>
+    request.nextUrl.pathname.startsWith(r.prefix)
+  );
   if (!rule) return NextResponse.next();
 
   const token = request.cookies.get(AUTH_COOKIE)?.value;
@@ -32,5 +36,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/receptionist/:path*", "/api/receptionist/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/receptionist/:path*",
+    "/api/receptionist/:path*",
+    "/housekeeping/:path*",
+    "/api/housekeeping/:path*",
+  ],
 };

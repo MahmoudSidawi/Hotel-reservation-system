@@ -11,5 +11,5 @@ export default async function ReceptionistLayout({ children }: { children: React
     redirect("/login");
   }
 
-  return <ReceptionistShell userName={user.name}>{children}</ReceptionistShell>;
+  return <>{children}</>;
 }

@@ -4,9 +4,11 @@ config({ path: ".env.local" });
 const TEST_PASSWORD = "Password123!";
 
 const TEST_USERS = [
-  { name: "Alice Admin", email: "admin@hotel.test", role: "admin" as const },
-  { name: "Rita Receptionist", email: "receptionist@hotel.test", role: "receptionist" as const },
-  { name: "Gary Guest", email: "guest@hotel.test", role: "guest" as const },
+  { name: "Alice Admin", email: "admin@hotel.test", role: "admin" as const, department: "Management", password: TEST_PASSWORD },
+  { name: "Rita Receptionist", email: "receptionist@hotel.test", role: "receptionist" as const, department: "Front Desk", password: TEST_PASSWORD },
+  { name: "Helen Housekeeper", email: "housekeeper@hotel.test", role: "housekeeping" as const, department: "Housekeeping", password: TEST_PASSWORD },
+  { name: "Gary Guest", email: "guest@hotel.test", role: "guest" as const, password: TEST_PASSWORD },
+  { name: "Mohammad Guest", email: "test1@gmail.com", role: "guest" as const, password: "Mohammad12" },
 ];
 
 async function main() {
@@ -22,8 +24,9 @@ async function main() {
       console.log(`Already exists: ${testUser.email}`);
       continue;
     }
-    const password = await bcrypt.hash(TEST_PASSWORD, 10);
-    await User.create({ ...testUser, password });
+    const password = await bcrypt.hash(testUser.password, 10);
+    const { password: rawPass, ...userData } = testUser;
+    await User.create({ ...userData, password });
     console.log(`Created: ${testUser.email} (${testUser.role})`);
   }
 

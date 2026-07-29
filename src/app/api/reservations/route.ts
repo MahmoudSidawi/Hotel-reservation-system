@@ -36,12 +36,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("[POST /api/reservations] Session identity from JWT:", {
+      sub: user.sub,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
     const rawBody = await request.json();
 
-    // Strip privileged/self-assigned fields a guest must not control: they
-    // could otherwise POST status:"checked_in", flag isWalkIn, backdate the
-    // actual check-in/out, or forge a userId. status defaults to "pending" and
-    // totalPrice is recomputed server-side in the controller.
     const {
       status: _status,
       isWalkIn: _isWalkIn,
@@ -52,7 +55,6 @@ export async function POST(request: NextRequest) {
       ...safeBody
     } = rawBody ?? {};
 
-    // Inject session identity into payload BEFORE Zod schema validation
     const payload = {
       ...safeBody,
       userId: user.sub,
@@ -60,6 +62,8 @@ export async function POST(request: NextRequest) {
       guestEmail: rawBody.guestEmail || user.email,
       createdBy: user.name,
     };
+
+    console.log("[POST /api/reservations] Final reservation payload to save:", payload);
 
     const data = createReservationSchema.parse(payload);
     const reservation = await createReservation(data);

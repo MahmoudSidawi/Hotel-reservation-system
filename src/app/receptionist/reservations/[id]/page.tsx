@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getReservationById } from "@/backend/controllers/reservationController";
 import { getPaymentByReservationId } from "@/backend/controllers/paymentController";
@@ -43,6 +45,16 @@ export default async function ReservationDetailPage({
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+      <div>
+        <Link
+          href="/receptionist"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200 px-3.5 py-2 rounded-lg shadow-sm hover:bg-zinc-50 transition"
+        >
+          <ArrowLeft className="w-4 h-4 text-zinc-500" />
+          Back to Dashboard
+        </Link>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h2 className="text-xl font-bold text-zinc-900">

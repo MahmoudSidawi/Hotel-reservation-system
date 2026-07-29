@@ -230,14 +230,41 @@ function BookingModal({
               </div>
             </div>
 
-            {/* Guest Details */}
+            {/* Guest Details & Staff Warning */}
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-[#8C8880] block mb-1">
                 RESERVATION OWNER
               </label>
-              <div className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918]">
-                {user.name} ({user.email})
+              <div className="w-full bg-white border border-[#E2DDD5] rounded px-3 py-2 text-xs text-[#1A1918] flex items-center justify-between">
+                <div>
+                  <span className="font-semibold">{user.name}</span>{" "}
+                  <span className="text-[#8C8880]">({user.email})</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-300">
+                  {user.role}
+                </span>
               </div>
+              {(user.role === "admin" || user.role === "receptionist") && (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 space-y-2">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <Info className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Logged in as Staff ({user.role.toUpperCase()})</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-normal">
+                    This reservation will be created under <strong>{user.name} ({user.email})</strong>. If you intend to book under a guest account (e.g. Mohammad), please log out first.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                      window.location.href = '/login';
+                    }}
+                    className="inline-block px-3 py-1.5 bg-amber-900 text-white text-[10px] font-bold uppercase tracking-wider rounded hover:bg-black transition-colors"
+                  >
+                    Log Out & Switch to Guest Account
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Payment Method */}

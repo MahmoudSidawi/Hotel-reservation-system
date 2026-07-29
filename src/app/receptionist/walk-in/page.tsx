@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { listRoomTypes } from "@/backend/controllers/roomTypeController";
 import WalkInBookingForm from "@/components/receptionist/WalkInBookingForm";
 
@@ -26,6 +28,13 @@ export default async function WalkInBookingPage({
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
       <div>
+        <Link
+          href="/receptionist"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900 bg-white border border-zinc-200 px-3.5 py-2 rounded-lg shadow-sm hover:bg-zinc-50 transition mb-3"
+        >
+          <ArrowLeft className="w-4 h-4 text-zinc-500" />
+          Back to Dashboard
+        </Link>
         <h2 className="text-xl font-bold text-zinc-900">{heading}</h2>
         <p className="text-xs text-zinc-500">{subtitle}</p>
       </div>

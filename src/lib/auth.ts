@@ -18,7 +18,7 @@ const secretKey = new TextEncoder().encode(JWT_SECRET);
 export const AUTH_COOKIE = "hrs_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8; // 8 hours
 
-export type UserRole = "guest" | "receptionist" | "admin";
+export type UserRole = "guest" | "receptionist" | "housekeeping" | "admin";
 
 export type SessionPayload = {
   sub: string;

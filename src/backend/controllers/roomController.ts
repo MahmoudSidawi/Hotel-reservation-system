@@ -7,9 +7,15 @@ import type { CreateRoomInput, UpdateRoomInput } from "@/backend/validators/room
 // Reservation statuses that still hold a room for their date range.
 export const BLOCKING_STATUSES = ["pending", "confirmed", "checked_in"];
 
+export function normalizeDate(dateInput: Date | string): Date {
+  const d = typeof dateInput === "string" ? new Date(dateInput) : new Date(dateInput.getTime());
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
 type AvailabilityQuery = {
-  checkIn: Date;
-  checkOut: Date;
+  checkIn: Date | string;
+  checkOut: Date | string;
   roomTypeId?: string;
   excludeReservationId?: string;
 };
@@ -46,6 +52,8 @@ export async function deleteRoom(id: string) {
 
 // Source of truth for booking conflicts: two stays overlap when
 // existingCheckIn < requestedCheckOut && requestedCheckIn < existingCheckOut.
+export const UNBOOKABLE_STATUSES = ["maintenance", "needs_cleaning", "cleaning"];
+
 export async function getAvailableRooms({
   checkIn,
   checkOut,
@@ -54,15 +62,19 @@ export async function getAvailableRooms({
 }: AvailabilityQuery) {
   await connectToDatabase();
 
-  const roomFilter: Record<string, unknown> = { status: { $ne: "maintenance" } };
+  const normCheckIn = normalizeDate(checkIn);
+  const normCheckOut = normalizeDate(checkOut);
+
+  // Exclude rooms that are in maintenance or currently dirty/being cleaned
+  const roomFilter: Record<string, unknown> = { status: { $nin: UNBOOKABLE_STATUSES } };
   if (roomTypeId) roomFilter.roomTypeId = roomTypeId;
 
   const candidateRooms = await Room.find(roomFilter).populate("roomTypeId").lean();
 
   const overlapFilter: Record<string, unknown> = {
     status: { $in: BLOCKING_STATUSES },
-    checkIn: { $lt: checkOut },
-    checkOut: { $gt: checkIn },
+    checkIn: { $lt: normCheckOut },
+    checkOut: { $gt: normCheckIn },
   };
   if (excludeReservationId) overlapFilter._id = { $ne: excludeReservationId };
 
@@ -76,20 +88,24 @@ export async function getAvailableRooms({
 
 export async function isRoomAvailable(
   roomId: string,
-  checkIn: Date,
-  checkOut: Date,
+  checkIn: Date | string,
+  checkOut: Date | string,
   excludeReservationId?: string
 ) {
   await connectToDatabase();
 
   const room = await Room.findById(roomId).lean();
-  if (!room || room.status === "maintenance") return false;
+  // Rooms in maintenance, needs_cleaning, or cleaning are unbookable until serviced
+  if (!room || UNBOOKABLE_STATUSES.includes(room.status ?? "")) return false;
+
+  const normCheckIn = normalizeDate(checkIn);
+  const normCheckOut = normalizeDate(checkOut);
 
   const overlapFilter: Record<string, unknown> = {
     roomId,
     status: { $in: BLOCKING_STATUSES },
-    checkIn: { $lt: checkOut },
-    checkOut: { $gt: checkIn },
+    checkIn: { $lt: normCheckOut },
+    checkOut: { $gt: normCheckIn },
   };
   if (excludeReservationId) overlapFilter._id = { $ne: excludeReservationId };
 

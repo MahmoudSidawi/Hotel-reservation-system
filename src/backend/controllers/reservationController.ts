@@ -3,9 +3,9 @@ import { NotFoundError, ConflictError } from "@/lib/errors";
 import Reservation from "@/backend/models/Reservation";
 import Room from "@/backend/models/Room";
 import User from "@/backend/models/User";
-import { isRoomAvailable, BLOCKING_STATUSES } from "@/backend/controllers/roomController";
+import { isRoomAvailable, BLOCKING_STATUSES, normalizeDate } from "@/backend/controllers/roomController";
 import { reservationEvents } from "@/backend/events/reservationEvents";
-import { notifyReservation } from "@/backend/events/notifications";
+import { notifyReservationEvent } from "@/backend/controllers/notificationController";
 import { nightsBetween } from "@/lib/dates";
 import { priceQuote } from "@/lib/pricing";
 import type {
@@ -64,14 +64,43 @@ async function quoteReservation(roomId: string, checkIn: Date, checkOut: Date) {
 // createdAt then _id), THIS request is the loser and rolls itself back. Both
 // racers apply the same deterministic tie-break, so exactly one survives.
 async function createReservationAtomic(payload: Record<string, unknown>) {
+  const normCheckIn = normalizeDate(payload.checkIn as Date | string);
+  const normCheckOut = normalizeDate(payload.checkOut as Date | string);
+  payload.checkIn = normCheckIn;
+  payload.checkOut = normCheckOut;
+
+  const available = await isRoomAvailable(
+    payload.roomId as string,
+    normCheckIn,
+    normCheckOut
+  );
+  if (!available) {
+    throw new ConflictError(
+      "This room is unavailable for the selected dates. Please choose different dates or another room."
+    );
+  }
+  if (!payload.userId && payload.guestEmail && typeof payload.guestEmail === "string") {
+    const matchedUser = await User.findOne({ email: (payload.guestEmail as string).toLowerCase().trim() });
+    if (matchedUser) {
+      payload.userId = matchedUser._id;
+      if (!payload.guestName) payload.guestName = matchedUser.name;
+    }
+  } else if (payload.userId) {
+    const owner = await User.findById(payload.userId).lean();
+    if (owner) {
+      payload.guestName = owner.name;
+      payload.guestEmail = owner.email;
+    }
+  }
+
   const created = await Reservation.create(payload);
 
   const conflict = await Reservation.findOne({
     _id: { $ne: created._id },
     roomId: payload.roomId,
     status: { $in: BLOCKING_STATUSES },
-    checkIn: { $lt: payload.checkOut },
-    checkOut: { $gt: payload.checkIn },
+    checkIn: { $lt: normCheckOut },
+    checkOut: { $gt: normCheckIn },
   })
     .sort({ createdAt: 1, _id: 1 })
     .lean();
@@ -82,7 +111,9 @@ async function createReservationAtomic(payload: Record<string, unknown>) {
     // Someone booked this room+dates first — undo our insert and fail.
     if (conflictKey < myKey) {
       await Reservation.findByIdAndDelete(created._id);
-      throw new ConflictError("Selected room was just booked for these dates. Please choose another.");
+      throw new ConflictError(
+        "This room is unavailable for the selected dates. Please choose different dates or another room."
+      );
     }
   }
 
@@ -176,12 +207,17 @@ export async function searchReservations({
 export async function createReservation(data: CreateReservationInput) {
   await connectToDatabase();
 
-  const available = await isRoomAvailable(data.roomId, data.checkIn, data.checkOut);
+  const normCheckIn = normalizeDate(data.checkIn);
+  const normCheckOut = normalizeDate(data.checkOut);
+
+  const available = await isRoomAvailable(data.roomId, normCheckIn, normCheckOut);
   if (!available) {
-    throw new ConflictError("Selected room is not available for the requested dates");
+    throw new ConflictError(
+      "This room is unavailable for the selected dates. Please choose different dates or another room."
+    );
   }
 
-  const quote = await quoteReservation(data.roomId, data.checkIn, data.checkOut);
+  const quote = await quoteReservation(data.roomId, normCheckIn, normCheckOut);
   if (quote.capacity > 0 && data.guests > quote.capacity) {
     throw new ConflictError(
       `This room holds up to ${quote.capacity} guest(s); you requested ${data.guests}.`
@@ -189,9 +225,22 @@ export async function createReservation(data: CreateReservationInput) {
   }
 
   // Price is computed server-side; a client-supplied totalPrice is ignored.
-  const created = await createReservationAtomic({ ...data, totalPrice: quote.total });
+  const created = await createReservationAtomic({
+    ...data,
+    checkIn: normCheckIn,
+    checkOut: normCheckOut,
+    totalPrice: quote.total,
+  });
 
   const result = (await populateReservation(created._id)) || created.toObject();
+
+  console.log("[createReservation] Created & Populated in DB:", {
+    id: result._id,
+    userId: result.userId,
+    guestName: result.guestName,
+    guestEmail: result.guestEmail,
+    createdBy: result.createdBy,
+  });
 
   reservationEvents.broadcast("RESERVATION_CREATED", {
     reservationId: String(result._id),
@@ -199,7 +248,7 @@ export async function createReservation(data: CreateReservationInput) {
     status: result.status,
     data: result as any,
   });
-  notifyReservation("created", result);
+  notifyReservationEvent("created", result as Record<string, unknown>);
 
   return result;
 }
@@ -207,12 +256,17 @@ export async function createReservation(data: CreateReservationInput) {
 export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: string) {
   await connectToDatabase();
 
-  const available = await isRoomAvailable(data.roomId, data.checkIn, data.checkOut);
+  const normCheckIn = normalizeDate(data.checkIn);
+  const normCheckOut = normalizeDate(data.checkOut);
+
+  const available = await isRoomAvailable(data.roomId, normCheckIn, normCheckOut);
   if (!available) {
-    throw new ConflictError("Selected room is no longer available for these dates");
+    throw new ConflictError(
+      "This room is unavailable for the selected dates. Please choose different dates or another room."
+    );
   }
 
-  const quote = await quoteReservation(data.roomId, data.checkIn, data.checkOut);
+  const quote = await quoteReservation(data.roomId, normCheckIn, normCheckOut);
   if (quote.capacity > 0 && data.guests > quote.capacity) {
     throw new ConflictError(
       `This room holds up to ${quote.capacity} guest(s); you requested ${data.guests}.`
@@ -221,6 +275,8 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
 
   const reservation = await createReservationAtomic({
     ...data,
+    checkIn: normCheckIn,
+    checkOut: normCheckOut,
     totalPrice: quote.total,
     isWalkIn: true,
     status: "confirmed",
@@ -237,7 +293,7 @@ export async function createWalkInBooking(data: WalkInBookingInput, createdBy?: 
     status: result.status,
     data: result as any,
   });
-  notifyReservation("created", result);
+  notifyReservationEvent("created", result as Record<string, unknown>);
 
   return result;
 }
@@ -285,34 +341,41 @@ export async function updateReservation(id: string, data: UpdateReservationInput
       );
     }
     if (data.status === "checked_in") {
-      const arrival = startOfDay(data.checkIn ?? reservation.checkIn);
-      if (startOfDay(new Date()) < arrival) {
-        throw new ConflictError("Cannot check in before the reservation's arrival date.");
+      const todayStart = startOfDay(new Date());
+      if (todayStart < startOfDay(reservation.checkIn)) {
+        reservation.checkIn = todayStart;
       }
       reservation.actualCheckIn = new Date();
+      await Room.findByIdAndUpdate(reservation.roomId, { status: "occupied" });
     }
     if (data.status === "checked_out") {
       reservation.actualCheckOut = new Date();
+      await Room.findByIdAndUpdate(reservation.roomId, { status: "needs_cleaning" });
+    }
+    if (data.status === "cancelled" || data.status === "no_show") {
+      await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
     }
     reservation.status = data.status;
   }
 
   const nextRoomId = data.roomId ?? String(reservation.roomId);
-  const nextCheckIn = data.checkIn ?? reservation.checkIn;
-  const nextCheckOut = data.checkOut ?? reservation.checkOut;
+  const normNextCheckIn = normalizeDate(data.checkIn ?? reservation.checkIn);
+  const normNextCheckOut = normalizeDate(data.checkOut ?? reservation.checkOut);
   const nextGuests = data.guests ?? reservation.guests;
 
   if (datesOrRoomChanging) {
-    const available = await isRoomAvailable(nextRoomId, nextCheckIn, nextCheckOut, id);
+    const available = await isRoomAvailable(nextRoomId, normNextCheckIn, normNextCheckOut, id);
     if (!available) {
-      throw new ConflictError("Selected room is not available for the requested dates");
+      throw new ConflictError(
+        "This room is unavailable for the selected dates. Please choose different dates or another room."
+      );
     }
   }
 
   // Re-quote whenever the priced inputs (room or dates) change, and re-check
   // capacity whenever the room, dates, or guest count change.
   if (datesOrRoomChanging || data.guests !== undefined) {
-    const quote = await quoteReservation(nextRoomId, nextCheckIn, nextCheckOut);
+    const quote = await quoteReservation(nextRoomId, normNextCheckIn, normNextCheckOut);
     if (quote.capacity > 0 && nextGuests > quote.capacity) {
       throw new ConflictError(
         `This room holds up to ${quote.capacity} guest(s); you requested ${nextGuests}.`
@@ -325,8 +388,8 @@ export async function updateReservation(id: string, data: UpdateReservationInput
 
   // Apply the remaining editable fields.
   if (data.roomId !== undefined) reservation.roomId = data.roomId as never;
-  if (data.checkIn !== undefined) reservation.checkIn = data.checkIn;
-  if (data.checkOut !== undefined) reservation.checkOut = data.checkOut;
+  if (data.checkIn !== undefined) reservation.checkIn = normNextCheckIn;
+  if (data.checkOut !== undefined) reservation.checkOut = normNextCheckOut;
   if (data.guests !== undefined) reservation.guests = data.guests;
   if (data.guestName !== undefined) reservation.guestName = data.guestName;
   if (data.guestPhone !== undefined) reservation.guestPhone = data.guestPhone;
@@ -399,7 +462,7 @@ export async function cancelReservation(id: string) {
     status: "cancelled",
     data: result as any,
   });
-  notifyReservation("cancelled", result);
+  notifyReservationEvent("cancelled", result as Record<string, unknown>);
 
   return result;
 }
@@ -445,9 +508,10 @@ export async function checkInReservation(id: string) {
   if (!["pending", "confirmed"].includes(reservation.status ?? "")) {
     throw new ConflictError(`Cannot check in a reservation with status "${reservation.status}"`);
   }
-  // Guests can't be checked in before the day their stay begins.
-  if (startOfDay(new Date()) < startOfDay(reservation.checkIn)) {
-    throw new ConflictError("Cannot check in before the reservation's arrival date.");
+  // If checked in early before scheduled checkIn date, update checkIn to today
+  const todayStart = startOfDay(new Date());
+  if (todayStart < startOfDay(reservation.checkIn)) {
+    reservation.checkIn = todayStart;
   }
 
   reservation.status = "checked_in";
@@ -485,7 +549,7 @@ export async function checkOutReservation(id: string, charges: CheckoutChargesIn
     reservation.totalPrice = (reservation.totalPrice ?? 0) + additionalFees;
   }
   await reservation.save();
-  await Room.findByIdAndUpdate(reservation.roomId, { status: "available" });
+  await Room.findByIdAndUpdate(reservation.roomId, { status: "needs_cleaning" });
 
   const result = (await populateReservation(id)) || reservation.toObject();
 

@@ -15,6 +15,14 @@ export async function login({ email, password }: LoginInput) {
   const validPassword = await bcrypt.compare(password, user.password);
   if (!validPassword) throw new UnauthorizedError("Invalid email or password");
 
+  // Deactivated accounts cannot log in
+  if (user.isActive === false) {
+    throw new UnauthorizedError("This account has been deactivated. Please contact the hotel administration.");
+  }
+
+  // Record last login time
+  await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
+
   const publicUser = {
     id: String(user._id),
     name: user.name,

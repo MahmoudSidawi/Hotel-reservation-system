@@ -53,7 +53,7 @@ function useUnreadCount() {
       } catch { /* ignore */ }
     };
     poll();
-    const id = setInterval(poll, 30_000);
+    const id = setInterval(poll, 4000);
     return () => clearInterval(id);
   }, []);
   return count;

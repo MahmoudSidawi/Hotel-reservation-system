@@ -160,11 +160,11 @@ export default function CalendarTab() {
                         className={`px-0.5 py-1.5 text-center border-l border-zinc-50 ${
                           isCurrentMonth && d === today ? 'bg-amber-50/60' : ''
                         }`}
-                        title={block ? `${block.userId?.name ?? block.guestName ?? 'Guest'} — ${block.status}` : ''}
+                        title={block ? `${block.guestName || block.userId?.name || 'Guest'} — ${block.status}` : ''}
                       >
                         {block ? (
                           <div className={`rounded text-[9px] font-bold py-0.5 px-0.5 truncate ${STATUS_BG[block.status] ?? 'bg-zinc-200'}`}>
-                            {startBlock ? (block.userId?.name ?? block.guestName ?? '?')?.[0] : '·'}
+                            {startBlock ? (block.guestName || block.userId?.name || '?')?.[0] : '·'}
                           </div>
                         ) : (
                           <div className="w-full h-4" />

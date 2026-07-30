@@ -7,6 +7,9 @@ import {
 } from "@/backend/controllers/notificationController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUser();

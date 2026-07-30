@@ -4,6 +4,9 @@ import { listRooms, createRoom } from "@/backend/controllers/roomController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
 import { requireRole } from "@/lib/apiAuth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   try {
     return NextResponse.json(await listRooms());

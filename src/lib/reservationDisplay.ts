@@ -12,13 +12,22 @@ type ReservationGuestFields = {
 };
 
 export function getGuestName(reservation: ReservationGuestFields): string {
-  return reservation.userId?.name ?? reservation.guestName ?? "Guest";
+  if (reservation.guestName && reservation.guestName.trim()) {
+    return reservation.guestName;
+  }
+  return reservation.userId?.name ?? "Guest";
 }
 
 export function getGuestPhone(reservation: ReservationGuestFields): string {
-  return reservation.userId?.phone ?? reservation.guestPhone ?? "—";
+  if (reservation.guestPhone && reservation.guestPhone.trim()) {
+    return reservation.guestPhone;
+  }
+  return reservation.userId?.phone ?? "—";
 }
 
 export function getGuestEmail(reservation: ReservationGuestFields): string {
-  return reservation.userId?.email ?? reservation.guestEmail ?? "—";
+  if (reservation.guestEmail && reservation.guestEmail.trim()) {
+    return reservation.guestEmail;
+  }
+  return reservation.userId?.email ?? "—";
 }

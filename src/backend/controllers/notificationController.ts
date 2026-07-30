@@ -190,3 +190,63 @@ export async function notifyReservationEvent(
     );
   }
 }
+
+export async function notifyHousekeepingEvent(
+  roomId: string,
+  roomNumber: string,
+  status: "needs_cleaning" | "cleaning" | "available",
+  actorName: string = "Housekeeping"
+) {
+  await connectToDatabase();
+
+  if (status === "needs_cleaning") {
+    // Notify all housekeepers
+    await notifyRole("housekeeping", {
+      type: "cleaning_requested",
+      title: "🧹 Room Needs Cleaning",
+      message: `Room #${roomNumber} requires cleaning.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+    // Notify all admins
+    await notifyRole("admin", {
+      type: "cleaning_requested",
+      title: "Room Marked Dirty",
+      message: `Room #${roomNumber} has been marked for cleaning.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+  } else if (status === "cleaning") {
+    // Notify admins & receptionists
+    await notifyRole("admin", {
+      type: "system_alert",
+      title: "🫧 Cleaning In Progress",
+      message: `${actorName} started cleaning Room #${roomNumber}.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+    await notifyRole("receptionist", {
+      type: "system_alert",
+      title: "🫧 Cleaning In Progress",
+      message: `Room #${roomNumber} is currently being cleaned.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+  } else if (status === "available") {
+    // Notify admins & receptionists
+    await notifyRole("admin", {
+      type: "cleaning_done",
+      title: "✅ Room Cleaned & Ready",
+      message: `Room #${roomNumber} is clean and ready for guests.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+    await notifyRole("receptionist", {
+      type: "cleaning_done",
+      title: "✅ Room Cleaned & Ready",
+      message: `Room #${roomNumber} is clean and ready for check-in.`,
+      relatedId: roomId,
+      relatedType: "Room",
+    });
+  }
+}

@@ -3,6 +3,9 @@ import { z } from "zod";
 import { getAvailableRooms } from "@/backend/controllers/roomController";
 import { jsonError } from "@/backend/middlewares/errorHandler";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const querySchema = z
   .object({
     checkIn: z.coerce.date(),

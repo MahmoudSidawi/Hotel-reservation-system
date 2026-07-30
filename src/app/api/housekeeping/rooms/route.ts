@@ -5,6 +5,9 @@ import Room from "@/backend/models/Room";
 import { jsonError } from "@/backend/middlewares/errorHandler";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(_request: NextRequest) {
   try {
     await requireRole("admin", "receptionist", "housekeeping");
@@ -47,6 +50,11 @@ export async function PATCH(request: NextRequest) {
       .lean();
 
     if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+
+    // Trigger housekeeping notification
+    const { notifyHousekeepingEvent } = await import("@/backend/controllers/notificationController");
+    await notifyHousekeepingEvent(roomId, room.roomNumber, data.status, user.name);
+
     return NextResponse.json(room);
   } catch (error) {
     return jsonError(error);

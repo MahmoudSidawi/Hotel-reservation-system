@@ -23,26 +23,39 @@ export default function HousekeepingTab() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchRooms = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
-      const res = await fetch('/api/housekeeping/rooms');
+      const res = await fetch('/api/housekeeping/rooms', { cache: 'no-store' });
       if (res.ok) setRooms(await res.json());
     } catch { /* ignore */ }
-    finally { setLoading(false); }
+    finally {
+      if (isInitial) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchRooms(true);
+    const interval = setInterval(() => fetchRooms(false), 5000);
+    return () => clearInterval(interval);
+  }, [fetchRooms]);
 
   const updateStatus = async (roomId: string, status: string) => {
-    const res = await fetch('/api/housekeeping/rooms', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, status }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setRooms((prev) => prev.map((r) => (r._id === roomId ? updated : r)));
+    // Optimistic update
+    setRooms((prev) => prev.map((r) => (r._id === roomId ? { ...r, status } : r)));
+
+    try {
+      const res = await fetch('/api/housekeeping/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, status }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setRooms((prev) => prev.map((r) => (r._id === roomId ? updated : r)));
+      }
+    } catch {
+      fetchRooms(false);
     }
   };
 
@@ -55,7 +68,7 @@ export default function HousekeepingTab() {
           <h2 className="text-xl font-bold text-zinc-900">Housekeeping Board</h2>
           <p className="text-xs text-zinc-500">Drag cards or use buttons to update room status</p>
         </div>
-        <button onClick={load} className="border border-zinc-200 px-3 py-2 rounded-lg text-zinc-600 hover:bg-zinc-50 flex items-center gap-1.5 text-xs">
+        <button onClick={() => fetchRooms(true)} className="border border-zinc-200 px-3 py-2 rounded-lg text-zinc-600 hover:bg-zinc-50 flex items-center gap-1.5 text-xs">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>

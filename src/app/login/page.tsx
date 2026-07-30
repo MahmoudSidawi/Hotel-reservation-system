@@ -48,6 +48,8 @@ function LoginForm() {
         destination = "/admin";
       } else if (data.user.role === "receptionist") {
         destination = "/receptionist";
+      } else if (data.user.role === "housekeeping") {
+        destination = "/housekeeping";
       } else {
         destination = callbackUrl ?? "/";
       }

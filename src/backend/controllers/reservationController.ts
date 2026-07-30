@@ -549,7 +549,12 @@ export async function checkOutReservation(id: string, charges: CheckoutChargesIn
     reservation.totalPrice = (reservation.totalPrice ?? 0) + additionalFees;
   }
   await reservation.save();
-  await Room.findByIdAndUpdate(reservation.roomId, { status: "needs_cleaning" });
+
+  const roomDoc = await Room.findByIdAndUpdate(reservation.roomId, { status: "needs_cleaning" }, { new: true });
+  if (roomDoc) {
+    const { notifyHousekeepingEvent } = await import("@/backend/controllers/notificationController");
+    await notifyHousekeepingEvent(String(roomDoc._id), roomDoc.roomNumber, "needs_cleaning", "Front Desk");
+  }
 
   const result = (await populateReservation(id)) || reservation.toObject();
 

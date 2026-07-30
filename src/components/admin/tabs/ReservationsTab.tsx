@@ -123,9 +123,9 @@ export default function ReservationsTab() {
   };
 
   const guestName = (r: Reservation) =>
-    r.userId?.name ?? r.guestName ?? 'Walk-in Guest';
+    r.guestName || r.userId?.name || 'Walk-in Guest';
   const guestEmail = (r: Reservation) =>
-    r.userId?.email ?? r.guestEmail ?? '—';
+    r.guestEmail || r.userId?.email || '—';
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 

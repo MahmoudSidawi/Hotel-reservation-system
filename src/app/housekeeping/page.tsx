@@ -104,26 +104,39 @@ export default function HousekeepingPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchRooms = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
-      const res = await fetch('/api/housekeeping/rooms');
+      const res = await fetch('/api/housekeeping/rooms', { cache: 'no-store' });
       if (res.ok) setRooms(await res.json());
     } catch { /* ignore */ }
-    finally { setLoading(false); }
+    finally {
+      if (isInitial) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchRooms(true);
+    const interval = setInterval(() => fetchRooms(false), 5000);
+    return () => clearInterval(interval);
+  }, [fetchRooms]);
 
   const updateStatus = async (roomId: string, status: string) => {
-    const res = await fetch('/api/housekeeping/rooms', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, status }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setRooms((prev) => prev.map((r) => r._id === roomId ? updated : r));
+    // Optimistic update
+    setRooms((prev) => prev.map((r) => r._id === roomId ? { ...r, status } : r));
+
+    try {
+      const res = await fetch('/api/housekeeping/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, status }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setRooms((prev) => prev.map((r) => r._id === roomId ? updated : r));
+      }
+    } catch {
+      fetchRooms(false);
     }
   };
 
@@ -143,7 +156,7 @@ export default function HousekeepingPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} className="border border-zinc-600 text-zinc-300 hover:text-white hover:border-zinc-400 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
+          <button onClick={() => fetchRooms(true)} className="border border-zinc-600 text-zinc-300 hover:text-white hover:border-zinc-400 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
           <button onClick={async () => { await logout(); router.push('/login'); }}

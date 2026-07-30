@@ -35,22 +35,28 @@ export default function NotificationsTab() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchNotifications = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (unreadOnly) params.set('unread', 'true');
-      const res = await fetch(`/api/notifications?${params}`);
+      const res = await fetch(`/api/notifications?${params}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications ?? []);
         setUnreadCount(data.unreadCount ?? 0);
       }
     } catch { /* ignore */ }
-    finally { setLoading(false); }
+    finally {
+      if (isInitial) setLoading(false);
+    }
   }, [unreadOnly]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchNotifications(true);
+    const interval = setInterval(() => fetchNotifications(false), 4000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const markRead = async (id: string) => {
     await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
@@ -88,7 +94,7 @@ export default function NotificationsTab() {
               <Check className="w-3.5 h-3.5" /> Mark all read
             </button>
           )}
-          <button onClick={load} className="border border-zinc-200 px-3 py-2 rounded-lg text-zinc-600 hover:bg-zinc-50">
+          <button onClick={() => fetchNotifications(true)} className="border border-zinc-200 px-3 py-2 rounded-lg text-zinc-600 hover:bg-zinc-50">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>

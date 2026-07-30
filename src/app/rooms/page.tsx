@@ -46,25 +46,35 @@ export default function RoomsPage() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
+    let isMounted = true;
 
-    Promise.all([
-      fetch('/api/rooms', { signal: controller.signal }).then((res) => res.json()),
-      fetch('/api/room-types', { signal: controller.signal }).then((res) => res.json()),
-      fetch('/api/room-images', { signal: controller.signal }).then((res) => res.json()),
-    ])
-      .then(([roomsData, roomTypesData, imagesData]) => {
-        setPhysicalRooms(Array.isArray(roomsData) ? roomsData : []);
-        setRoomTypes(Array.isArray(roomTypesData) ? roomTypesData : []);
-        setImages(Array.isArray(imagesData) ? imagesData : []);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setLoadError('Failed to load rooms. Please try again.');
-      })
-      .finally(() => setLoading(false));
+    const fetchAllRooms = async (isInitial = false) => {
+      if (isInitial) setLoading(true);
+      try {
+        const [roomsData, roomTypesData, imagesData] = await Promise.all([
+          fetch('/api/rooms', { cache: 'no-store' }).then((res) => res.json()),
+          fetch('/api/room-types', { cache: 'no-store' }).then((res) => res.json()),
+          fetch('/api/room-images', { cache: 'no-store' }).then((res) => res.json()),
+        ]);
+        if (isMounted) {
+          setPhysicalRooms(Array.isArray(roomsData) ? roomsData : []);
+          setRoomTypes(Array.isArray(roomTypesData) ? roomTypesData : []);
+          setImages(Array.isArray(imagesData) ? imagesData : []);
+        }
+      } catch {
+        if (isInitial && isMounted) setLoadError('Failed to load rooms. Please try again.');
+      } finally {
+        if (isInitial && isMounted) setLoading(false);
+      }
+    };
 
-    return () => controller.abort();
+    fetchAllRooms(true);
+    const interval = setInterval(() => fetchAllRooms(false), 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [checkInDate, checkOutDate]);
 
   const imageFor = (roomTypeId: string): string => {
@@ -311,7 +321,7 @@ export default function RoomsPage() {
                       const description = rt?.description ?? '';
                       const typeId = rt?._id ?? room._id;
                       const statusCfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
-                      const isBookable = room.status === 'available' || room.status === 'reserved';
+                      const isBookable = room.status === 'available';
 
                       return (
                         <div

@@ -3,7 +3,7 @@ import { NotFoundError } from "@/lib/errors";
 import RoomType from "@/backend/models/RoomType";
 import Room from "@/backend/models/Room";
 import Reservation from "@/backend/models/Reservation";
-import { BLOCKING_STATUSES } from "@/backend/controllers/roomController";
+import { BLOCKING_STATUSES, normalizeDate } from "@/backend/controllers/roomController";
 import type { CreateRoomTypeInput, UpdateRoomTypeInput } from "@/backend/validators/roomType";
 
 interface ListRoomTypesOptions {
@@ -18,8 +18,8 @@ export async function listRoomTypes(options?: ListRoomTypesOptions) {
 
   // If date range is provided, compute room availability
   if (checkIn && checkOut) {
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const start = normalizeDate(checkIn);
+    const end = normalizeDate(checkOut);
 
     // 1. Find all blocking reservations that overlap with the requested stay
     //    dates. BLOCKING_STATUSES (from roomController) is the same set used

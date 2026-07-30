@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-export type UserRole = "guest" | "receptionist" | "admin";
+export type UserRole = "guest" | "receptionist" | "housekeeping" | "admin";
 
 export type NotificationPrefs = {
   bookingUpdates?: boolean;

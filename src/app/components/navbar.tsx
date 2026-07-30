@@ -43,6 +43,8 @@ export default function Navbar() {
       ? [{ label: "Admin Dashboard", href: "/admin" }]
       : user.role === "receptionist"
       ? [{ label: "Reception Portal", href: "/receptionist" }]
+      : user.role === "housekeeping"
+      ? [{ label: "Housekeeping Board", href: "/housekeeping" }]
       : [
           { label: "My Dashboard", href: "/Customer" },
           { label: "My Reservations", href: "/reservations" },

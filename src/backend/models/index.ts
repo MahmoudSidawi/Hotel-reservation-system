@@ -5,3 +5,6 @@ export { default as Amenity } from "./Amenity";
 export { default as Room } from "./Room";
 export { default as Reservation } from "./Reservation";
 export { default as Payment } from "./Payment";
+export { default as Notification } from "./Notification";
+export { default as Review } from "./Review";
+export { default as MaintenanceRequest } from "./MaintenanceRequest";

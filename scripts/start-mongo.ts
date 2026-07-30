@@ -1,5 +1,6 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { config } from "dotenv";
+import fs from "fs";
 
 config({ path: ".env.local" });
 
@@ -12,16 +13,18 @@ async function seedInitialData() {
 
   const TEST_PASSWORD = "Password123!";
   const TEST_USERS = [
-    { name: "Alice Admin", email: "admin@hotel.test", role: "admin" as const },
-    { name: "Rita Receptionist", email: "receptionist@hotel.test", role: "receptionist" as const },
-    { name: "Gary Guest", email: "guest@hotel.test", role: "guest" as const },
+    { name: "Alice Admin", email: "admin@hotel.test", role: "admin" as const, password: TEST_PASSWORD },
+    { name: "Rita Receptionist", email: "receptionist@hotel.test", role: "receptionist" as const, password: TEST_PASSWORD },
+    { name: "Gary Guest", email: "guest@hotel.test", role: "guest" as const, password: TEST_PASSWORD },
+    { name: "Mohammad Guest", email: "test1@gmail.com", role: "guest" as const, password: "Mohammad12" },
   ];
 
   for (const testUser of TEST_USERS) {
     const existing = await User.findOne({ email: testUser.email });
     if (!existing) {
-      const password = await bcrypt.hash(TEST_PASSWORD, 10);
-      await User.create({ ...testUser, password });
+      const password = await bcrypt.hash(testUser.password, 10);
+      const { password: rawPass, ...userData } = testUser;
+      await User.create({ ...userData, password });
       console.log(`Auto-seeded user: ${testUser.email} (${testUser.role})`);
     }
   }
@@ -127,10 +130,15 @@ async function seedInitialData() {
 
 async function start() {
   console.log("Starting embedded local MongoDB server...");
+  if (!fs.existsSync("./.mongo-data")) {
+    fs.mkdirSync("./.mongo-data", { recursive: true });
+  }
   const mongoServer = await MongoMemoryServer.create({
     instance: {
       port: 27017,
       dbName: "hotel_db",
+      dbPath: "./.mongo-data",
+      storageEngine: "wiredTiger",
     },
   });
 

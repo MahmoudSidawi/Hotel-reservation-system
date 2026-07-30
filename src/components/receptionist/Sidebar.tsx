@@ -55,7 +55,7 @@ export default function ReceptionistSidebar({
       )}
 
       <aside
-        className={`w-64 bg-[#18181B] text-[#E4E4E7] flex flex-col justify-between border-r border-[#27272A] shrink-0 font-sans select-none
+        className={`w-[280px] bg-[#0F172A] text-slate-200 flex flex-col justify-between border-r border-slate-800/80 shrink-0 font-sans select-none
           fixed inset-y-0 left-0 z-50 min-h-screen transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:static lg:translate-x-0 lg:min-h-screen`}

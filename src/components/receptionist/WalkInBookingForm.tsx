@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { nightsBetween } from "@/lib/dates";
+import { nightsBetween, todayISO } from "@/lib/dates";
 import { priceQuote } from "@/lib/pricing";
 
 type RoomType = {
@@ -54,6 +54,7 @@ export default function WalkInBookingForm({
     null
   );
 
+  const today = todayISO();
   const nights = useMemo(() => nightsBetween(checkIn, checkOut), [checkIn, checkOut]);
 
   const selectedRoom = availableRooms.find((r) => r._id === roomId);
@@ -178,8 +179,14 @@ export default function WalkInBookingForm({
               <input
                 type="date"
                 required
+                min={today}
                 value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
+                onChange={(e) => {
+                  setCheckIn(e.target.value);
+                  // A check-out that is now on or before the new arrival is no
+                  // longer a valid stay — clear it rather than leave it stale.
+                  if (checkOut && e.target.value >= checkOut) setCheckOut("");
+                }}
                 className="input"
               />
             </Field>
@@ -187,6 +194,7 @@ export default function WalkInBookingForm({
               <input
                 type="date"
                 required
+                min={checkIn || today}
                 value={checkOut}
                 onChange={(e) => setCheckOut(e.target.value)}
                 className="input"

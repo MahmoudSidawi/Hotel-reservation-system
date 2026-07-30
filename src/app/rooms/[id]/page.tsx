@@ -11,7 +11,7 @@ import {
   ApiRoomType, ApiRoomImage, getAmenityIcon, fallbackImageFor, type BookingDetails,
 } from '@/lib/rooms-data';
 import { useAuth } from '@/context/AuthContext';
-import { nightsBetween } from '@/lib/dates';
+import { nightsBetween, todayISO } from '@/lib/dates';
 import { priceQuote } from '@/lib/pricing';
 import Navbar from '../../components/navbar';
 import Footer from '../../components/footer';
@@ -195,8 +195,12 @@ function BookingModal({
                 <input
                   type="date"
                   required
+                  min={todayISO()}
                   value={modalCheckIn}
-                  onChange={(e) => setModalCheckIn(e.target.value)}
+                  onChange={(e) => {
+                    setModalCheckIn(e.target.value);
+                    if (modalCheckOut && e.target.value >= modalCheckOut) setModalCheckOut('');
+                  }}
                   className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded px-2.5 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
                 />
               </div>
@@ -207,6 +211,7 @@ function BookingModal({
                 <input
                   type="date"
                   required
+                  min={modalCheckIn || todayISO()}
                   value={modalCheckOut}
                   onChange={(e) => setModalCheckOut(e.target.value)}
                   className="w-full bg-[#FAF8F5] border border-[#E2DDD5] rounded px-2.5 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#C5A46D]"
@@ -607,7 +612,7 @@ export default function RoomDetailPage() {
                       <input
                         type="date"
                         value={checkInDate}
-                        min={new Date().toISOString().slice(0, 10)}
+                        min={todayISO()}
                         onChange={(e) => setCheckInDate(e.target.value)}
                         className="bg-transparent font-medium focus:outline-none cursor-pointer w-full text-xs"
                       />
@@ -620,7 +625,7 @@ export default function RoomDetailPage() {
                       <input
                         type="date"
                         value={checkOutDate}
-                        min={checkInDate || new Date().toISOString().slice(0, 10)}
+                        min={checkInDate || todayISO()}
                         onChange={(e) => setCheckOutDate(e.target.value)}
                         className="bg-transparent font-medium focus:outline-none cursor-pointer w-full text-xs"
                       />

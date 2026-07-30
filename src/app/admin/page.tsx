@@ -34,6 +34,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useRealtimeReservations } from '@/lib/hooks/useRealtimeReservations';
+import { todayISO } from '@/lib/dates';
 
 // ==========================================
 // TYPES
@@ -862,9 +863,11 @@ function NewReservationModal({
               <input
                 type="date"
                 required
+                min={todayISO()}
                 value={checkInDate}
                 onChange={(e) => {
                   setCheckInDate(e.target.value);
+                  if (checkOutDate && e.target.value >= checkOutDate) setCheckOutDate('');
                   setErrorMsg('');
                 }}
                 className="w-full p-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-xs focus:outline-none"
@@ -876,6 +879,7 @@ function NewReservationModal({
               <input
                 type="date"
                 required
+                min={checkInDate || todayISO()}
                 value={checkOutDate}
                 onChange={(e) => {
                   setCheckOutDate(e.target.value);

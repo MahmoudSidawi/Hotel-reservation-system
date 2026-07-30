@@ -1,6 +1,14 @@
 import { z } from "zod";
+import { isBeforeToday } from "@/lib/dates";
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ID format");
+
+// The date pickers set `min` to today, but that is only a UI hint — a crafted
+// request could still book a stay in the past. Reject it here as well.
+const NOT_IN_THE_PAST = {
+  message: "Check-in date cannot be in the past",
+  path: ["checkIn"],
+};
 
 const reservationStatus = z.enum([
   "pending",
@@ -35,7 +43,8 @@ export const createReservationSchema = z
   .refine((data) => data.checkOut > data.checkIn, {
     message: "Check-out date must strictly occur after check-in date",
     path: ["checkOut"],
-  });
+  })
+  .refine((data) => !isBeforeToday(data.checkIn), NOT_IN_THE_PAST);
 
 export const updateReservationSchema = z.object({
   userId: objectId.optional(),
@@ -70,7 +79,8 @@ export const walkInBookingSchema = z
   .refine((data) => data.checkOut > data.checkIn, {
     message: "Check-out date must strictly occur after check-in date",
     path: ["checkOut"],
-  });
+  })
+  .refine((data) => !isBeforeToday(data.checkIn), NOT_IN_THE_PAST);
 
 export const checkoutChargesSchema = z.object({
   additionalFees: z.number().min(0).optional(),

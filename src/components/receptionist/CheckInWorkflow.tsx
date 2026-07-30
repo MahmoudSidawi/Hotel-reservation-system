@@ -32,6 +32,11 @@ export default function CheckInWorkflow() {
   // Only pending/confirmed bookings can be checked in, and the search endpoint
   // takes one status at a time — so fetch both and merge by arrival date.
   const loadReservations = useCallback(async (search?: string) => {
+    setSearching(true);
+    setError(null);
+    setSelected(null);
+    setDone(false);
+
     try {
       const responses = await Promise.all(
         CHECK_IN_STATUSES.map(async (status) => {

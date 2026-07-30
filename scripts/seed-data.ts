@@ -125,6 +125,153 @@ const ROOM_IMAGES: Record<string, string[]> = {
   ],
 };
 
+// Sample reservations so the receptionist Check-In / Check-Out screens have
+// something to find. Arrivals must start today or earlier — checkInReservation
+// rejects a check-in before the arrival date.
+//   status "pending"/"confirmed" -> searchable on the Check-In screen
+//   status "checked_in"          -> searchable on the Check-Out screen
+const SAMPLE_RESERVATIONS = [
+  // --- Ready to check in (arriving today) ---
+  {
+    roomNumber: "201",
+    guestName: "Walk-in Sample Guest",
+    guestPhone: "555-0199",
+    isWalkIn: true,
+    checkIn: 0,
+    checkOut: 3,
+    status: "confirmed",
+    guests: 1,
+    totalPrice: 540,
+  },
+  {
+    roomNumber: "103",
+    guestName: "Omar Haddad",
+    guestPhone: "555-0142",
+    guestEmail: "omar.haddad@example.com",
+    checkIn: 0,
+    checkOut: 2,
+    status: "confirmed",
+    guests: 2,
+    totalPrice: 240,
+  },
+  {
+    roomNumber: "104",
+    guestName: "Layla Nasser",
+    guestPhone: "555-0128",
+    guestEmail: "layla.nasser@example.com",
+    checkIn: 0,
+    checkOut: 4,
+    status: "confirmed",
+    guests: 2,
+    totalPrice: 480,
+  },
+  {
+    roomNumber: "106",
+    guestName: "Yusuf Karim",
+    guestPhone: "555-0173",
+    checkIn: 0,
+    checkOut: 1,
+    status: "pending",
+    guests: 1,
+    totalPrice: 90,
+  },
+  {
+    roomNumber: "202",
+    guestName: "Sara Mansour",
+    guestPhone: "555-0156",
+    guestEmail: "sara.mansour@example.com",
+    checkIn: 0,
+    checkOut: 3,
+    status: "confirmed",
+    guests: 2,
+    totalPrice: 540,
+  },
+  {
+    roomNumber: "301",
+    guestName: "Daniel Fischer",
+    guestPhone: "555-0110",
+    guestEmail: "daniel.fischer@example.com",
+    checkIn: -1,
+    checkOut: 4,
+    status: "confirmed",
+    guests: 4,
+    totalPrice: 1600,
+  },
+
+  // --- Currently in house, ready to check out ---
+  {
+    // The registered test guest, so the customer dashboard has a live stay too.
+    roomNumber: "102",
+    userEmail: "guest@hotel.test",
+    checkIn: -1,
+    checkOut: 2,
+    status: "checked_in",
+    guests: 2,
+    totalPrice: 360,
+  },
+  {
+    roomNumber: "105",
+    guestName: "Nour Khalil",
+    guestPhone: "555-0164",
+    checkIn: -2,
+    checkOut: 0,
+    status: "checked_in",
+    guests: 2,
+    totalPrice: 240,
+  },
+  {
+    roomNumber: "107",
+    guestName: "Elena Petrova",
+    guestPhone: "555-0135",
+    guestEmail: "elena.petrova@example.com",
+    checkIn: -3,
+    checkOut: 0,
+    status: "checked_in",
+    guests: 1,
+    totalPrice: 270,
+  },
+  {
+    roomNumber: "203",
+    guestName: "Marcus Wright",
+    guestPhone: "555-0188",
+    isWalkIn: true,
+    checkIn: -1,
+    checkOut: 1,
+    status: "checked_in",
+    guests: 2,
+    totalPrice: 360,
+  },
+  {
+    roomNumber: "401",
+    guestName: "Hana Ibrahim",
+    guestPhone: "555-0121",
+    guestEmail: "hana.ibrahim@example.com",
+    checkIn: -4,
+    checkOut: 1,
+    status: "checked_in",
+    guests: 4,
+    totalPrice: 1250,
+  },
+  {
+    roomNumber: "501",
+    guestName: "Victoria Lane",
+    guestPhone: "555-0107",
+    guestEmail: "victoria.lane@example.com",
+    checkIn: -2,
+    checkOut: 2,
+    status: "checked_in",
+    guests: 2,
+    totalPrice: 2000,
+  },
+] as const;
+
+// Room.status mirrors where the reservation currently stands.
+const ROOM_STATUS_FOR_RESERVATION: Record<string, string> = {
+  pending: "reserved",
+  confirmed: "reserved",
+  checked_in: "occupied",
+};
+
 function daysFromNow(days: number): Date {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
@@ -188,42 +335,52 @@ async function main() {
     }
   }
 
-  // A couple of sample reservations so the receptionist dashboard has data.
-  const guest = await User.findOne({ email: "guest@hotel.test" });
-  const standardRoom = await Room.findOne({ roomNumber: "102" });
-  const deluxeRoom = await Room.findOne({ roomNumber: "201" });
+  // Sample reservations so the receptionist screens have data to work with.
+  for (const sample of SAMPLE_RESERVATIONS) {
+    const room = await Room.findOne({ roomNumber: sample.roomNumber });
+    if (!room) {
+      console.log(`Skipped reservation: room ${sample.roomNumber} not found`);
+      continue;
+    }
+    if (await Reservation.findOne({ roomId: room._id })) {
+      console.log(`Already exists: reservation for room ${sample.roomNumber}`);
+      continue;
+    }
 
-  if (guest && standardRoom && !(await Reservation.findOne({ roomId: standardRoom._id }))) {
+    const userEmail = "userEmail" in sample ? sample.userEmail : undefined;
+    let userId: unknown;
+    if (userEmail) {
+      const user = await User.findOne({ email: userEmail });
+      if (!user) {
+        console.log(`Skipped reservation for room ${sample.roomNumber}: no user ${userEmail}`);
+        continue;
+      }
+      userId = user._id;
+    }
+
     await Reservation.create({
-      userId: guest._id,
-      roomId: standardRoom._id,
-      checkIn: daysFromNow(-1),
-      checkOut: daysFromNow(2),
-      status: "checked_in",
-      actualCheckIn: daysFromNow(-1),
-      guests: 2,
-      totalPrice: 360,
+      userId,
+      guestName: "guestName" in sample ? sample.guestName : undefined,
+      guestPhone: "guestPhone" in sample ? sample.guestPhone : undefined,
+      guestEmail: "guestEmail" in sample ? sample.guestEmail : undefined,
+      isWalkIn: "isWalkIn" in sample ? sample.isWalkIn : false,
+      roomId: room._id,
+      checkIn: daysFromNow(sample.checkIn),
+      checkOut: daysFromNow(sample.checkOut),
+      status: sample.status,
+      actualCheckIn: sample.status === "checked_in" ? daysFromNow(sample.checkIn) : undefined,
+      guests: sample.guests,
+      totalPrice: sample.totalPrice,
       createdBy: "seed-script",
     });
-    await Room.findByIdAndUpdate(standardRoom._id, { status: "occupied" });
-    console.log("Created sample reservation: currently checked-in guest in room 102");
-  }
 
-  if (deluxeRoom && !(await Reservation.findOne({ roomId: deluxeRoom._id }))) {
-    await Reservation.create({
-      guestName: "Walk-in Sample Guest",
-      guestPhone: "555-0199",
-      isWalkIn: true,
-      roomId: deluxeRoom._id,
-      checkIn: daysFromNow(0),
-      checkOut: daysFromNow(3),
-      status: "confirmed",
-      guests: 1,
-      totalPrice: 540,
-      createdBy: "seed-script",
-    });
-    await Room.findByIdAndUpdate(deluxeRoom._id, { status: "reserved" });
-    console.log("Created sample reservation: arriving today in room 201");
+    const roomStatus = ROOM_STATUS_FOR_RESERVATION[sample.status];
+    if (roomStatus) await Room.findByIdAndUpdate(room._id, { status: roomStatus });
+
+    console.log(
+      `Created reservation: ${userEmail ?? ("guestName" in sample ? sample.guestName : "guest")} ` +
+        `in room ${sample.roomNumber} (${sample.status})`
+    );
   }
 
   console.log("\nSeed data complete.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search, CheckCircle2, Loader2, LogIn } from "lucide-react";
 import StatusBadge from "@/components/receptionist/StatusBadge";
 import { getGuestName, getGuestPhone } from "@/lib/reservationDisplay";
@@ -17,36 +17,52 @@ type ReservationResult = {
   roomId?: { roomNumber?: string; floor?: number } | null;
 };
 
+const CHECK_IN_STATUSES = ["pending", "confirmed"] as const;
+
 export default function CheckInWorkflow() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ReservationResult[]>([]);
   const [selected, setSelected] = useState<ReservationResult | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [searching, setSearching] = useState(true);
+  const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-
-    setSearching(true);
-    setError(null);
-    setSelected(null);
-    setDone(false);
-
+  // Only pending/confirmed bookings can be checked in, and the search endpoint
+  // takes one status at a time — so fetch both and merge by arrival date.
+  const loadReservations = useCallback(async (search?: string) => {
     try {
-      const res = await fetch(
-        `/api/receptionist/reservations?query=${encodeURIComponent(query.trim())}`
+      const responses = await Promise.all(
+        CHECK_IN_STATUSES.map(async (status) => {
+          const params = new URLSearchParams({ status });
+          if (search) params.set("query", search);
+          const res = await fetch(`/api/receptionist/reservations?${params.toString()}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Search failed");
+          return data as ReservationResult[];
+        })
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Search failed");
-      setResults(data);
+      const merged = responses
+        .flat()
+        .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
+      setResults(merged);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
+      setResults([]);
     } finally {
       setSearching(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadReservations();
+  }, [loadReservations]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearched(Boolean(query.trim()));
+    loadReservations(query.trim() || undefined);
   };
 
   const completeCheckIn = async () => {
@@ -77,10 +93,9 @@ export default function CheckInWorkflow() {
         </p>
         <button
           onClick={() => {
-            setSelected(null);
-            setResults([]);
             setQuery("");
-            setDone(false);
+            setSearched(false);
+            loadReservations();
           }}
           className="mt-6 bg-[#18181B] text-white px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-zinc-800 transition"
         >
@@ -126,31 +141,51 @@ export default function CheckInWorkflow() {
 
       {/* Results */}
       {results.length > 0 && !selected && (
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm divide-y divide-zinc-100">
-          {results.map((r) => {
-            const eligible = ["pending", "confirmed"].includes(r.status);
-            return (
-              <button
-                key={r._id}
-                disabled={!eligible}
-                onClick={() => setSelected(r)}
-                className="w-full text-left p-4 flex items-center justify-between hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                <div>
-                  <p className="font-semibold text-sm text-zinc-800">{getGuestName(r)}</p>
-                  <p className="text-xs text-zinc-500">
-                    Room {r.roomId?.roomNumber ?? "—"} · {new Date(r.checkIn).toLocaleDateString()} –{" "}
-                    {new Date(r.checkOut).toLocaleDateString()}
-                  </p>
-                </div>
-                <StatusBadge status={r.status} />
-              </button>
-            );
-          })}
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+            <h3 className="text-sm font-bold text-zinc-900">
+              {searched ? "Search Results" : "Expected Arrivals"}
+            </h3>
+            <span className="text-[11px] font-semibold text-zinc-400">
+              {results.length} {results.length === 1 ? "reservation" : "reservations"}
+            </span>
+          </div>
+          <div className="divide-y divide-zinc-100">
+            {results.map((r) => {
+              const eligible = ["pending", "confirmed"].includes(r.status);
+              return (
+                <button
+                  key={r._id}
+                  disabled={!eligible}
+                  onClick={() => setSelected(r)}
+                  className="w-full text-left p-4 flex items-center justify-between hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <div>
+                    <p className="font-semibold text-sm text-zinc-800">{getGuestName(r)}</p>
+                    <p className="text-xs text-zinc-500">
+                      Room {r.roomId?.roomNumber ?? "—"} ·{" "}
+                      {new Date(r.checkIn).toLocaleDateString()} –{" "}
+                      {new Date(r.checkOut).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <StatusBadge status={r.status} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
-      {results.length === 0 && !searching && query && (
-        <p className="text-xs text-zinc-400 text-center">No matching reservations found.</p>
+      {searching && !selected && (
+        <p className="flex items-center justify-center gap-2 text-xs text-zinc-400">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading reservations...
+        </p>
+      )}
+      {results.length === 0 && !searching && (
+        <p className="text-xs text-zinc-400 text-center">
+          {searched
+            ? "No matching reservations found."
+            : "No reservations are waiting to be checked in."}
+        </p>
       )}
 
       {/* Verification */}
